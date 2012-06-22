@@ -17,15 +17,26 @@ package com.twitter.parrot.feeder
 
 import com.twitter.ostrich.admin.RuntimeEnvironment
 import com.twitter.logging.Logger
+import com.twitter.util.Eval
+import com.twitter.parrot.config.ParrotFeederConfig
+import java.io.File
 
 object FeederMain {
   val log = Logger.get(getClass.getName)
 
   def main(args: Array[String]) {
-    val runtime = RuntimeEnvironment(this, args)
-    val feeder: ParrotFeeder = runtime.loadRuntimeConfig()
-    log.info("Starting Parrot Feeder...")
     try {
+      val feeder =
+        if (args.contains("-local")){
+			val feederLogName = args(2)
+			val feederConfig = new Eval().apply[ParrotFeederConfig](new File(feederLogName))
+			feederConfig.logSource = Some(new LogSourceImpl(feederConfig.inputLog))
+			new ParrotFeeder(feederConfig)
+        } else {
+			val runtime = RuntimeEnvironment(this, args)
+			log.info("Starting Parrot Feeder...")
+			runtime.loadRuntimeConfig()
+        }	
       feeder.start()
     } catch {
       case t: Throwable =>

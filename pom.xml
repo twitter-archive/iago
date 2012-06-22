@@ -108,7 +108,7 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>util-logging</artifactId>
-      <version>5.2.0</version>
+      <version>5.2.1-SNAPSHOT</version>
     </dependency>
     <!-- Test -->
     <dependency>

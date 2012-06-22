@@ -17,14 +17,32 @@ package com.twitter.parrot.server
 
 import com.twitter.logging.Logger
 import com.twitter.ostrich.admin.{RuntimeEnvironment, Service}
+import com.twitter.util.Eval
+import com.twitter.parrot.config.ParrotServerConfig
+import java.io.File
+import org.jboss.netty.handler.codec.http.HttpResponse
 
 object ServerMain {
   val log = Logger.get(getClass.getName)
 
   def main(args: Array[String]) {
     try {
-      val runtime = RuntimeEnvironment(this, args)
-      val server: Service = runtime.loadRuntimeConfig()
+      val server =
+        if (args.contains("-local")) {
+          val serverLogName = args(2) //TODO: make less hardcoded
+          val result = new Eval().apply[ParrotServerConfig[ParrotRequest, HttpResponse]](
+            new File(serverLogName)
+          )
+          result.parrotPort = 9999
+          result.thriftServer = Some(new ThriftServerImpl)
+          result.transport = Some(new FinagleTransport(result))
+          new ParrotServerImpl(result)
+        } else {
+          val runtime = RuntimeEnvironment(this, args)
+          runtime.loadRuntimeConfig()
+        }
+
+
       server.start()
     } catch {
       case e: Exception =>

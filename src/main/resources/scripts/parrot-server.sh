@@ -38,7 +38,7 @@ case "$1" in
 
   # start-local is meant for development and runs your server in the foreground.
   start-local)
-    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/* ${MAIN_CLASS} -f ${APP_HOME}/config/dev-server.scala
+    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/*jar ${MAIN_CLASS} -local -f ${APP_HOME}/config/target/local-server.scala
   ;;
 
   start-mesos)

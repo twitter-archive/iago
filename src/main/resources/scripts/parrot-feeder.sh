@@ -40,7 +40,7 @@ case "$1" in
 
   # start-local is meant for development and runs your server in the foreground.
   start-local)
-    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/${MAIN_JAR} ${MAIN_CLASS} -f ${APP_HOME}/config/dev-feeder.scala $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/*jar ${MAIN_CLASS} -local -f ${APP_HOME}/config/target/local-feeder.scala $2 $3 $4 $5 $6 $7 $8 $9 ${10}
   ;;
 
   start-mesos)
