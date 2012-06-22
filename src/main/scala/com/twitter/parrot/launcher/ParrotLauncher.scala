@@ -123,7 +123,16 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
   def kill() {
     log.info("Killing Parrot job named: %s", job: String)
     config.parrotTasks foreach { task =>
-      CommandRunner("kill -9 `ps aux | grep local-%s.scala | awk '{print $2;}'`".format(task), true)
+      //CommandRunner("kill -9 `ps aux | grep local-%s.scala | awk '{print $2;}'`".format(task), true)
+	  val commandRunner = new CommandRunner("ps aux")
+	  commandRunner.run
+	  val psOutput = commandRunner.getOutput
+	  psOutput.split("\n").map {
+		line => if (line.contains("local-%s.scala".format(task))) {
+		  val pid = line.split("\\s+")(1)
+		  CommandRunner("kill -9 %s".format(pid))
+		}
+	  }
     }
     CommandRunner.shutdown()
   }
