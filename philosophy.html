@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Twitter Iago</title>
+    <title>Philosophy · Twitter Iago</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="">
@@ -71,53 +71,46 @@
     </div>
 
     <div class="container">
-
-<!-- Masthead
-================================================== -->
-<header class="jumbotron masthead">
-  <div class="inner">
-    <h1>Iago, from Twitter</h1>
-    <p>A load generator, built for engineers.</p>
-    <p class="download-info">
-      <a href="https://github.com/twitter/iago/" class="btn btn-primary btn-large">View project on GitHub</a>
-      <a href="assets/iago.zip" class="btn btn-large">Download Iago <small>(v0.5.0)</small></a>
-    </p>
-  </div>
-
-  <div class="bs-links">
-    <ul class="quick-links">
-      <li><a href="https://github.com/twitter/iago/zipball/master">Download with docs</a></li>
-      <li><a href="http://blog.iago.twitter.com">Read the blog</a></li>
-      <li><a href="https://github.com/twitter/iago/issues?state=open">Submit issues</a></li>
-      <li><a href="https://github.com/twitter/iago/wiki">Roadmap and changelog</a></li>
-    </ul>
-    <ul class="quick-links">
-      <li>
-        <iframe class="github-btn" src="http://markdotto.github.com/github-buttons/github-btn.html?user=twitter&repo=iago&type=watch&count=true" allowtransparency="true" frameborder="0" scrolling="0" width="112px" height="20px"></iframe>
-      </li>
-      <li>
-        <iframe class="github-btn" src="http://markdotto.github.com/github-buttons/github-btn.html?user=twitter&repo=iago&type=fork&count=true" allowtransparency="true" frameborder="0" scrolling="0" width="98px" height="20px"></iframe>
-      </li>
-      <li class="follow-btn">
-        <a href="https://twitter.com/iagoloadgen" class="twitter-follow-button" data-link-color="#0069D6" data-show-count="true">Follow @iagoloadgen</a>
-      </li>
-      <li class="tweet-btn">
-        <a href="https://twitter.com/share" class="twitter-share-button" data-url="http://twitter.github.com/iago/" data-count="horizontal" data-via="iagoloadgen" data-related="hivetheory:Creator of Twitter Iago">Tweet</a>
-      </li>
-    </ul>
-  </div>
-</header>
-
-
-     <!-- Footer
-      ================================================== -->
-      <footer class="footer">
-        <p class="pull-right"><a href="#">Back to top</a></p>
-        <p>Built with resources from <a href="http://twitter.com/twitter" target="_blank">@twitter</a> by <a href="http://twitter.com/hivetheory" target="_blank">@hivetheory</a>.</p>
-        <p>Code licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache License v2.0</a>. Documentation licensed under <a href="http://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</p>
-        <p>Icons from <a href="http://glyphicons.com">Glyphicons Free</a>, licensed under <a href="http://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</p>
-      </footer>
-
+      <header class="jumbotron subhead" id="overview">
+        <h1>Philosophy</h1>
+        <p class="lead">Iago has a specific point of view about load testing. Understanding 
+          that point of view will help in making a decision to use it.</p>
+        <p>First of all, Iago is primarily a load generation library. It is designed
+          to be used by software engineers who have some familiarity with a JVM language such as
+          Java or Scala. While it's possible to use Iago as a stand-alone load testing application,
+          this is not its strong suit today and you will probably be happier with other tools
+          if that is what you need.</p>
+        <p>That said, it is also designed to be very easy to use. It usually requires
+          more code to write a test client than it does to write a load test using Iago. Indeed,
+          the code from a test client is usually just what you need to write your load test. This
+          is deliberate, because we believe that people who most need Iago are those who find
+          themselves writing their own load tests late at night after a release has gone bad.
+          Use Iago, it's easier!</p>
+        <p>Another strong suit of Iago is its ability to accurately replicate production traffic,
+          with a heavy emphasis on modelling open systems (ie, systems which recieve requests
+          independent of their ability to service them). Unlike many open source and commercially
+          available load generators, Iago does not attempt to model users with threads, has no
+          concept of think time, and is not particularly amenable to characterizing load in terms
+          of concurrent users</p>
+        </p>Instead, Iago focuses on requests per second and has built-in support for statistical
+          models such as an exponential distribution (used to model a Poisson Process), uniform
+          distributions, as well as supporting easily writing your own request distribution either
+          in terms of sums of distribution or your own implementation. Under the hood, Iago goes
+          the extra mile in terms of reliably meeting the arrival times your distribution specifies,
+          even when rates and wait times are high.</p>
+        <p>Speaking of high request rates, Iago supports arbitrarily high rates of traffic via
+          built-in support for creating clusters. At Twitter, engineers regularly run load tests
+          that generate in excess of 100K requests per second or more. Single instances of Iago
+          can easily achieve anywhere from 1K to 10K rps from commodity hardware, only limited by
+          the particulars of your protocol needs.</p>
+        <p>Equally important is Iago's ability to be extended. Because our target users are other
+          engineers, it is critical that every possible knob be available to turn. In fact, you
+          can easily write your own knobs, protocols, data sources, management interfaces or
+          whatever else you can imagine because Iago's components are designed from the ground
+          up to be extended or replaced.
+        <p>In short, Iago is the load generator we used to wish we had. Now that we've written
+          it, we want to share it with like-minded engineers who appreciate its capabilities.</p>
+      </header>
     </div><!-- /container -->
 
 
@@ -160,4 +153,3 @@
 
   </body>
 </html>
-
