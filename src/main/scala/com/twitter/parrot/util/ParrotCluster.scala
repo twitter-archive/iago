@@ -326,9 +326,11 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
     allParrots foreach { parrot =>
       try {
         parrot.shutdown()
+        println("shut down parrot")
       }
       catch {
         case t: Throwable => log.error(t, "Error shutting down Parrot: %s", t.getClass.getName)
+          println(t, "Error shutting down Parrot: %s", t.getClass.getName)
       }
     }
   }

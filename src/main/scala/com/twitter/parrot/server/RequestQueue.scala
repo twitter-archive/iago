@@ -99,6 +99,7 @@ class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Re
   def clockError = jobs.values.foldLeft(0.0)(_+_.clockError)
 
   def shutdown() {
+
     running.set(false)
     jobs.values.foreach( _.pause() )
   }

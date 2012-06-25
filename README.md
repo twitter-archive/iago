@@ -24,6 +24,8 @@
 
 ## Iago Quick Start
 
+NOTE: This repo has only recently been made public and our velocity is high at the moment, with significant work being done on documentation in particular. Please join iago-users@googlegroups.com (https://groups.google.com/d/forum/iago-users) for updates and to ask pressing questions.
+
 If you are already familiar with the Iago Load Generation tool, follow these steps to get started; otherwise, start with the <a href="#Iago Overview">Iago Overview</a>. For questions, please contact <a href="mailto:iago-users@googlegroups.com">iago-users@googlegroups.com</a>.
 
 <a name="Iago Prerequisites"></a>

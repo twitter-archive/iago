@@ -16,7 +16,8 @@ LOG_HOME=$APP_HOME
 MAIN_CLASS="com.twitter.parrot.server.ServerMain"
 HEAP_OPTS="-Xmx#{serverXmx}m -Xms2000m -XX:NewSize=512m"
 GC_OPTS="-XX:+UseConcMarkSweepGC -verbosegc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+UseParNewGC -Xloggc:$LOG_HOME/gc.log"
-JAVA_OPTS="-server $GC_OPTS $HEAP_OPTS $PROFILE_OPTS"
+DEBUG_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005"
+JAVA_OPTS="-server $GC_OPTS $HEAP_OPTS $PROFILE_OPTS" # $DEBUG_OPTS"
 
 # Used to set JAVA_HOME sanely if not already set.
 function find_java() {
@@ -38,7 +39,8 @@ case "$1" in
 
   # start-local is meant for development and runs your server in the foreground.
   start-local)
-    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/* ${MAIN_CLASS} -f ${APP_HOME}/config/dev-server.scala
+    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/*jar ${MAIN_CLASS} -f ${APP_HOME}/config/target/local-server.scala
+echo "done."
   ;;
 
   start-mesos)

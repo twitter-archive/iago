@@ -17,6 +17,10 @@ package com.twitter.parrot.server
 
 import com.twitter.logging.Logger
 import com.twitter.ostrich.admin.{RuntimeEnvironment, Service}
+import com.twitter.util.Eval
+import com.twitter.parrot.config.ParrotServerConfig
+import java.io.File
+import org.jboss.netty.handler.codec.http.HttpResponse
 
 object ServerMain {
   val log = Logger.get(getClass.getName)

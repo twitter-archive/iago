@@ -52,6 +52,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("diskUsed" -> diskUsed.toString),
     ("doAuth" -> config.doOAuth.toString),
     ("duration" -> config.duration.toString),
+	("fullLog" -> config.log),
     ("header" -> config.header),
     ("hostConnectionCoresize" -> config.hostConnectionCoresize.toString),
     ("hostConnectionIdleTimeInMs" -> config.hostConnectionIdleTimeInMs.toString),
@@ -93,11 +94,20 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     log.info("Starting Parrot job named %s", job)
 
     try {
-      handleLogFile()
-      createConfigs()
-      createScripts()
-      pauseUntilReady()
-      cleanup()
+      if(config.localMode) {
+        handleLogFile()
+        createLocalConfigs()
+        createScripts()
+        pauseUntilReady()
+        createLocalJobs()
+        cleanup()
+      } else {
+        handleLogFile()
+        createRemoteConfigs()
+        createScripts()
+        pauseUntilReady()
+        cleanup()
+      }
     }
     catch {
       case t: Throwable => {
@@ -113,7 +123,16 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
   def kill() {
     log.info("Killing Parrot job named: %s", job: String)
     config.parrotTasks foreach { task =>
-      // TBD
+      //CommandRunner("kill -9 `ps aux | grep local-%s.scala | awk '{print $2;}'`".format(task), true)
+	  val commandRunner = new CommandRunner("ps aux")
+	  commandRunner.run
+	  val psOutput = commandRunner.getOutput
+	  psOutput.split("\n").map {
+		line => if (line.contains("local-%s.scala".format(task))) {
+		  val pid = line.split("\\s+")(1)
+		  CommandRunner("kill -9 %s".format(pid))
+		}
+	  }
     }
     CommandRunner.shutdown()
   }
@@ -132,7 +151,16 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     }
   }
 
-  private[this] def createConfigs() {
+  private[this] def createLocalConfigs() {
+    log.debug("Creating configs.")
+
+    List(("/templates/local-template-feeder.scala",  targetDstFolder + "/local-feeder.scala"),
+         ("/templates/local-template-server.scala",  targetDstFolder + "/local-server.scala") ) foreach {
+      case (src, dst) => templatize(src, dst, symbols)
+    }
+  }
+
+  private[this] def createRemoteConfigs() {
     log.debug("Creating configs.")
 
     List( ("/templates/template.mesos",         targetDstFolder + "/config.mesos"),
@@ -148,7 +176,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
       new File(scriptsDstFolder).mkdir()
     }
 
-    List("parrot-feeder.sh", "parrot-server.sh") map { s =>
+    List("local-parrot.sh","parrot-feeder.sh", "parrot-server.sh") map { s =>
       ("/scripts/" + s, scriptsDstFolder + "/" + s)
     } foreach { case (src, dst) =>
       templatize(src, dst, symbols)
@@ -164,6 +192,10 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
       response = Console.readLine()
       if (response == "quit") throw new Exception("Quitting.")
     }
+  }
+
+  private[this] def createLocalJobs() {
+      CommandRunner("sh scripts/local-parrot.sh", true)
   }
 
   private[this] def cleanup() {

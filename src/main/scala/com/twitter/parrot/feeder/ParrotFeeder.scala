@@ -117,12 +117,7 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     // Must call this before blocking below
     cluster.connectParrots()
 
-    // This gives our server(s) a chance to start up by waiting on a latch the Poller manages.
-    // This technically could have a bug -- if a server were to start up and then disappear,
-    // the latch would still potentially tick down in the poller, and we'd end up with
-    // fewer servers than expected. The code further down will cover that condition.
-    log.info("Awaiting %d servers to stand up and be recognized.", config.numInstances)
-    allServers.await(5, TimeUnit.MINUTES)
+	allServers.await(1, TimeUnit.MINUTES)
 
     if (cluster.runningParrots.isEmpty) {
       log.error("Empty Parrots list! Is Parrot running somewhere?")
@@ -162,11 +157,11 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
       parrots foreach { parrot =>
 
         if (!initialized(parrot)) {
+          println("initialized parrot")
           initialize(parrot)
         }
 
         val batch = readBatch(linesToRead)
-
         if (batch.size > 0) {
 
           writeBatch(parrot, batch)

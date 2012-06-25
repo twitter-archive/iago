@@ -17,7 +17,7 @@ LOG_HOME=$APP_HOME
 MAIN_CLASS="com.twitter.parrot.feeder.FeederMain"
 HEAP_OPTS="-Xmx2000m -Xms2000m -XX:NewSize=512m"
 GC_OPTS="-XX:+UseConcMarkSweepGC -verbosegc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+UseParNewGC -Xloggc:$LOG_HOME/gc.log"
-DEBUG_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8008"
+DEBUG_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5004"
 JAVA_OPTS="-server $GC_OPTS $HEAP_OPTS $PROFILE_OPTS" #$DEBUG_OPTS"
 
 # Used to set JAVA_HOME sanely if not already set.
@@ -40,7 +40,8 @@ case "$1" in
 
   # start-local is meant for development and runs your server in the foreground.
   start-local)
-    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/${MAIN_JAR} ${MAIN_CLASS} -f ${APP_HOME}/config/dev-feeder.scala $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/*jar ${MAIN_CLASS} -f ${APP_HOME}/config/target/local-feeder.scala $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+echo "done."
   ;;
 
   start-mesos)
