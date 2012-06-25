@@ -73,23 +73,17 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     // Poller is starting here so that we can validate that we get enough servers, ie
     // so that validatePreconditions has a chance to pass without a 5 minute wait.
     poller.start()
-println("started poller")
 
     if (!validatePreconditions()) {
-println("invalid preconditions")
       shutdown()
     }
     else {
 
       BackgroundProcess {
         runLoad()
-println("ran load")
         drainServers()
-println("drained servers")
         reportResults()
-println("reported results")
         shutdown()
-println("shutdown")
       }
     }
   }
@@ -99,9 +93,7 @@ println("shutdown")
    * called remotely if the web management interface is enabled.
    */
   def shutdown() {
-println("in shut down")
     cluster.shutdown()
-println("shut down cluster")
     poller.shutdown()
     ServiceTracker.shutdown()
   }
@@ -165,7 +157,7 @@ println("shut down cluster")
       parrots foreach { parrot =>
 
         if (!initialized(parrot)) {
-println("initialized parrot")
+          println("initialized parrot")
           initialize(parrot)
         }
 

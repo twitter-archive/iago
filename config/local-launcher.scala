@@ -10,3 +10,4 @@ new ParrotLauncherConfig {
   maxRequests = 20
   reuseFile = false
 }
+

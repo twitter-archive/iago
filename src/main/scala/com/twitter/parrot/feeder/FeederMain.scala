@@ -26,17 +26,9 @@ object FeederMain {
 
   def main(args: Array[String]) {
     try {
-      val feeder =
-        if (args.contains("-local")){
-			val feederLogName = args(2)
-			val feederConfig = new Eval().apply[ParrotFeederConfig](new File(feederLogName))
-			feederConfig.logSource = Some(new LogSourceImpl(feederConfig.inputLog))
-			new ParrotFeeder(feederConfig)
-        } else {
-			val runtime = RuntimeEnvironment(this, args)
-			log.info("Starting Parrot Feeder...")
-			runtime.loadRuntimeConfig()
-        }	
+      val runtime = RuntimeEnvironment(this, args)
+	  log.info("Starting Parrot Feeder...")
+	  val feeder: ParrotFeeder = runtime.loadRuntimeConfig()
       feeder.start()
     } catch {
       case t: Throwable =>

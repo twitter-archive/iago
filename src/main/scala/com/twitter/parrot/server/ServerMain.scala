@@ -27,22 +27,8 @@ object ServerMain {
 
   def main(args: Array[String]) {
     try {
-      val server =
-        if (args.contains("-local")) {
-          val serverLogName = args(2) //TODO: make less hardcoded
-          val result = new Eval().apply[ParrotServerConfig[ParrotRequest, HttpResponse]](
-            new File(serverLogName)
-          )
-          result.parrotPort = 9999
-          result.thriftServer = Some(new ThriftServerImpl)
-          result.transport = Some(new FinagleTransport(result))
-          new ParrotServerImpl(result)
-        } else {
-          val runtime = RuntimeEnvironment(this, args)
-          runtime.loadRuntimeConfig()
-        }
-
-
+      val runtime = RuntimeEnvironment(this, args)
+      val server: Service = runtime.loadRuntimeConfig()
       server.start()
     } catch {
       case e: Exception =>
