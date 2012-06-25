@@ -1,6 +1,6 @@
 <a name="Top"></a>
 
-# Iago, A Load Generator README (June 13, 2012)
+# Iago, A Load Generator README
 [![Build Status](https://secure.travis-ci.org/twitter/iago.png)](http://travis-ci.org/twitter/iago)
 
 * <a href="#Iago Quick Start">Iago Quick Start</a>
