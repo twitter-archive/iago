@@ -41,7 +41,7 @@ trait ParrotFeederConfig extends Config[RuntimeEnvironment => Service]
   var pollInterval = Duration(1, TimeUnit.SECONDS)
   var numThreads = 0
   var requestRate = 1
-  var parser = "oauth"
+  var parser = "http"
   var numInstances = 1
   var httpPort = 9993
 
