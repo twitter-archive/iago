@@ -32,13 +32,15 @@ import org.jboss.netty.handler.codec.http.HttpResponse
 class SimpleRecordProcessor(service: ParrotService[ParrotRequest, HttpResponse],
                             config: ParrotServerConfig[ParrotRequest, HttpResponse])
   extends RecordProcessor {
+
   def processLines(job: ParrotJob, lines: Seq[String]) {
     lines flatMap { line =>
       val target = job.victims.get(config.randomizer.nextInt(job.victims.size))
       UriParser(line) match {
         case Return(uri) =>
           if (!uri.path.isEmpty && !line.startsWith("#")) {
-            Some(service(new ParrotRequest(target, None, Nil, uri, line)))
+            val request = new ParrotRequest(target, None, Nil, uri, line)
+            Some(service(request))
           }
           else
             None
