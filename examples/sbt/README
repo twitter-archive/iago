@@ -1,0 +1,12 @@
+COMMANDS
+sbt update:						will pull in all of your dependencies
+sbt compile:					compiles.
+sbt clean-dist package-dist:	cleans out any previous dists and creates a new one
+
+If you do compile or package-dist you also want to include NO_VALIDATE=1 and NO_TESTS=1 to stop the tests from running.
+
+TO RUN
+0) "sbt update", if needed
+1) "NO_VALIDATE=1 NO_TESTS=1 sbt clean-dist package-dist" to clean up and create a new dist dir
+2) "cd dist/sbt-example"
+3) "java -jar sbt-example-1.0.jar -f config/echo.scala"
