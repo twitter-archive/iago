@@ -3,7 +3,7 @@
 # echo mesos startup script.
 
 APP_NAME="echo"
-MAIN_JAR="parrot-examples-1.0.jar"
+MAIN_JAR="sbt-example-1.0.jar"
 
 APP_HOME=`pwd`
 PIDFILE=$APP_HOME/$APP_NAME.pid

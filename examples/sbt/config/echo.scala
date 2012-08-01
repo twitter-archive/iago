@@ -10,8 +10,10 @@ new ParrotLauncherConfig {
   numInstances = 1
   duration = 5
   timeUnit = "MINUTES"
+  reuseFile = true
+  localMode = true
 
-  imports = "import com.twitter.jexample.EchoLoadTest"
+  imports = "import com.twitter.example.EchoLoadTest"
   responseType = "Array[Byte]"
   transport = "ThriftTransport"
   loadTest = "new EchoLoadTest(service.get)"
