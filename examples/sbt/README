@@ -1,12 +1,29 @@
-COMMANDS
-sbt update:						will pull in all of your dependencies
-sbt compile:					compiles.
-sbt clean-dist package-dist:	cleans out any previous dists and creates a new one
+This is the README for an example usage of Iago. This brings up an echo server on your localhost,
+then creates an Iago job to send traffic to your server.
 
-If you do compile or package-dist you also want to include NO_VALIDATE=1 and NO_TESTS=1 to stop the tests from running.
+NOTE: If you are unfamiliar with sbt, check out project/build/Project.scala
+NOTE2: If you are unfamiliar with how to use Iago, check out src & config/echo.scala. Also read the Iago README.
 
-TO RUN
-0) "sbt update", if needed
-1) "NO_VALIDATE=1 NO_TESTS=1 sbt clean-dist package-dist" to clean up and create a new dist dir
-2) "cd dist/sbt-example"
-3) "java -jar sbt-example-1.0.jar -f config/echo.scala"
+
+SBT COMMANDS
+sbt update:                   will pull in all of your dependencies
+sbt compile*:                  compiles.
+sbt clean-dist:               cleans out any previous distributions
+sbt package-dist*:             packages and creates a distribution at dist/
+
+*prepend NO_VALIDATE=1 and NO_TESTS=1 to stop the tests from running
+(there's a currently known bug in our dependencies that causes the tests to fail)
+
+
+BEFORE YOU DO ANYTHING
+0) copy the iago jar to libs/
+1) run "sbt update"
+
+TO START UP ECHO SERVER
+0) run "NO_TESTS=1 NO_VALIDATE=1 sbt clean-dist package-dist" to create a distribution
+1) "cd dist/sbt-example"
+2) "./scripts/echo-server.sh start-local"
+
+TO RUN IAGO
+0) "cd dist/sbt-example"
+1) "java -jar sbt-example-1.0.jar -f config/echo.scala"
