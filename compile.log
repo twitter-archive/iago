@@ -1,0 +1,305 @@
+[0m[[0minfo[0m] [0mSet current project to default-607a0f (in build file:/Users/chrisa/twitter/iago/)[0m
+[0m[[0minfo[0m] [0mCompiling 46 Scala sources to /Users/chrisa/twitter/iago/target/scala-2.9.1/classes...[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/CommonParserConfig.scala:19: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Time[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotCommonConfig.scala:18: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Duration[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotFeederConfig.scala:18: object conversions is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.conversions.time._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:18: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.LoggerFactory[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:20: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Config[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:36: not found: value required[0m
+[0m[[31merror[0m] [0m  var jobName = required[String][0m
+[0m[[31merror[0m] [0m                ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:38: not found: value required[0m
+[0m[[31merror[0m] [0m  var log = required[String][0m
+[0m[[31merror[0m] [0m            ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:45: not found: value required[0m
+[0m[[31merror[0m] [0m  var port = required[Int][0m
+[0m[[31merror[0m] [0m             ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:56: not found: value required[0m
+[0m[[31merror[0m] [0m  var victims = required[String][0m
+[0m[[31merror[0m] [0m                ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotLauncherConfig.scala:77: not found: value missingValues[0m
+[0m[[31merror[0m] [0m    val missing = missingValues[0m
+[0m[[31merror[0m] [0m                  ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/config/ParrotServerConfig.scala:18: object conversions is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.conversions.time._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/FeedConsumer.scala:19: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/util/RemoteParrot.scala:18: object conversions is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.conversions.time._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/FeederMain.scala:18: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.admin.RuntimeEnvironment[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/FeederMain.scala:19: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotFeeder.scala:23: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift._[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotFeeder.scala:21: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.admin.{BackgroundProcess, ServiceTracker, Service}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotFeeder.scala:20: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotPoller.scala:18: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotPoller.scala:19: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.{ParrotServerService, ParrotState, ParrotStatus}[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotPoller.scala:20: object apache is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.apache.thrift.protocol.TBinaryProtocol[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/feeder/ParrotPoller.scala:21: object apache is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.apache.thrift.transport.TSocket[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/Adjustor.scala:20: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/util/ParrotCluster.scala:22: object common is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.common.net.pool.DynamicHostSet.HostChangeMonitor[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/LauncherMain.scala:20: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/LauncherMain.scala:22: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Eval[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/LauncherMain.scala:35: value apply is not a member of Nothing[0m
+[0m[[31merror[0m] [0m    val launcher = config map { _.apply() }[0m
+[0m[[31merror[0m] [0m                                  ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/LauncherMain.scala:38: value kill is not a member of Nothing[0m
+[0m[[31merror[0m] [0m        if (killJob) _.kill()[0m
+[0m[[31merror[0m] [0m                       ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/LauncherMain.scala:39: value adjust is not a member of Nothing[0m
+[0m[[31merror[0m] [0m        else if (adjustJob) _.adjust(adjustment)[0m
+[0m[[31merror[0m] [0m                              ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/LauncherMain.scala:40: value start is not a member of Nothing[0m
+[0m[[31merror[0m] [0m        else _.start()[0m
+[0m[[31merror[0m] [0m               ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/launcher/ParrotLauncher.scala:18: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/RecordParser.scala:19: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.stats.Stats[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/RecordParser.scala:21: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.{ParrotJob, TargetHost}[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/RecordProcessor.scala:20: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.ParrotJob[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotService.scala:18: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.Service[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotThriftService.scala:18: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.Service[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/RecordProcessorFactory.scala:18: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/RecordProcessorFactory.scala:19: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.ParrotJob[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/SimpleRecordProcessor.scala:18: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.stats.Stats[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/SimpleRecordProcessor.scala:21: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.ParrotJob[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/SimpleRecordProcessor.scala:23: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.{Return, Throw}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/SimpleRecordProcessor.scala:24: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.handler.codec.http.HttpResponse[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/util/UriParser.scala:19: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.{Return, Throw, Try}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/processor/SimpleRecordProcessor.scala:40: not found: value uri[0m
+[0m[[31merror[0m] [0m          if (!uri.path.isEmpty && !line.startsWith("#")) {[0m
+[0m[[31merror[0m] [0m               ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotService.scala:21: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Future[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotRequest.scala:19: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.TargetHost[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotRequest.scala:18: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.thrift.ThriftClientRequest[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotRequest.scala:21: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Promise[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:19: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.builder.ClientBuilder[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:20: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.http.Http[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:21: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.stats.OstrichStatsReceiver[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:22: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.{ServiceFactory, Service}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:24: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.TargetHost[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:25: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.{Promise, Duration, Future}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:28: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.buffer.ChannelBuffers[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:29: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:30: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.handler.codec.http._[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotTransport.scala:23: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotTransport.scala:19: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.Service[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotTransport.scala:20: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:109: B does not take parameters[0m
+[0m[[31merror[0m] [0m      factory()[0m
+[0m[[31merror[0m] [0m             ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotHttpService.scala:20: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.handler.codec.http.HttpResponse[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala:116: value release is not a member of type parameter A[0m
+[0m[[31merror[0m] [0m    clients.values.foreach { _.release() }[0m
+[0m[[31merror[0m] [0m                               ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/KestrelTransport.scala:18: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.kestrel.protocol.{Command, Get, Kestrel, Response, Set}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/KestrelTransport.scala:20: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.{Duration, Time}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/KestrelTransport.scala:22: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.buffer.ChannelBuffers[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheLikeTransport.scala:21: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.{CodecFactory, Service}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheLikeTransport.scala:19: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.builder.ClientBuilder[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheLikeTransport.scala:20: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.stats.OstrichStatsReceiver[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheLikeTransport.scala:23: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.{Promise, Future}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheLikeTransport.scala:35: class HashMap cannot be instantiated because it does not conform to its self-type scala.collection.mutable.HashMap[A,B][0m
+[0m[[31merror[0m] [0m  val clients = new mutable.HashMap[String, Service[Codec, Rep]]()[0m
+[0m[[31merror[0m] [0m                ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheTransport.scala:18: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.memcached.protocol.text.Memcached[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheTransport.scala:19: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.memcached.protocol.{Command, Get, Gets, Response, Set}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheTransport.scala:21: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Time[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/MemcacheTransport.scala:22: object jboss is not a member of package org[0m
+[0m[[31merror[0m] [0mimport org.jboss.netty.buffer.ChannelBuffers[0m
+[0m[[31merror[0m] [0m           ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotServer.scala:20: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotServer.scala:21: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.stats.Stats[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotServer.scala:22: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.admin.ServiceTracker[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotServer.scala:25: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift._[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotService.scala:20: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.{ParrotJob, TargetHost}[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotThriftService.scala:19: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.thrift.ThriftClientRequest[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotThriftService.scala:21: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.{Future, Promise}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotThriftService.scala:40: value release is not a member of com.twitter.parrot.server.ParrotService[com.twitter.parrot.server.ParrotRequest,Array[Byte]][0m
+[0m[[31merror[0m] [0m    service.release()[0m
+[0m[[31merror[0m] [0m            ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotThriftService.scala:43: value isAvailable is not a member of com.twitter.parrot.server.ParrotService[com.twitter.parrot.server.ParrotRequest,Array[Byte]][0m
+[0m[[31merror[0m] [0m  override def isAvailable = service.isAvailable[0m
+[0m[[31merror[0m] [0m                                     ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotUdpTransport.scala:18: object conversions is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.conversions.time._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ParrotUdpTransport.scala:38: value seconds is not a member of Int[0m
+[0m[[31merror[0m] [0m  val connectTimeout = 10.seconds[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestConsumer.scala:18: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestConsumer.scala:19: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.stats.Stats[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestConsumer.scala:21: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.ParrotJob[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/util/RequestDistribution.scala:18: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util.Duration[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestQueue.scala:18: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.thrift.ThriftClientRequest[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestQueue.scala:19: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestQueue.scala:20: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.stats.Stats[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestQueue.scala:22: object thrift is not a member of package com.twitter.parrot[0m
+[0m[[31merror[0m] [0mimport com.twitter.parrot.thrift.ParrotJob[0m
+[0m[[31merror[0m] [0m                          ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/RequestQueue.scala:23: object util is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.util._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ServerMain.scala:18: object logging is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.logging.Logger[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ServerMain.scala:19: object ostrich is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.ostrich.admin.{RuntimeEnvironment, Service}[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ThriftServer.scala:18: object conversions is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.conversions.time._[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ThriftTransport.scala:19: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.Service[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m/Users/chrisa/twitter/iago/src/main/scala/com/twitter/parrot/server/ThriftTransport.scala:20: object finagle is not a member of package com.twitter[0m
+[0m[[31merror[0m] [0mimport com.twitter.finagle.builder.ClientBuilder[0m
+[0m[[31merror[0m] [0m                   ^[0m
+[0m[[31merror[0m] [0m133 errors found[0m
+[0m[[31merror[0m] [0m{file:/Users/chrisa/twitter/iago/}default-607a0f/compile:[31mcompile[0m: Compilation failed[0m
+[0m[[31merror[0m] [0mTotal time: 7 s, completed Jun 22, 2012 10:04:37 AM[0m
