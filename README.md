@@ -52,7 +52,18 @@ We support Scala 2.9 and recommend you clone the latest master: <a href="https:/
 
 Launch Iago from the distribution with `java` `-jar` *iago_jar* `-f` *your_config*. This will create the Iago processes for you and configure it to use your transactions. To kill a running job, add `-k` to your launch parameters: `java` `-jar` *iago_jar* `-f` *your_config* `-k`.
 
-If you are using Iago as a library, for example, in the case of testing over the Thrift protocol or building more complex tests with HTTP or Memcached/Kestrel, you should instead add a task to your project's configuration. See <a href="#Configuring Your Test">Configuring Your Test</a> for more information. If you build something that wants a main class, use <code>com.twitter.parrot.launcher.LauncherMain</code>.
+If you launch your Iago job on your local machine and an old Iago job is still running, it probably won't get far: it will attempt to re-user a port and fail. You want to kill the running job, as described above.
+
+<em>If you build via Maven,</em> then you might wonder "How do I launch Iago 'from the distribution'?" The steps are:
+<pre>
+% <kbd>mvn package -DskipTests</kbd>
+% <kbd>mkdir tmp; cd tmp</kbd>
+% <kbd>unzip ../target/iago-<var>version</var>-package-dist.zip</kbd>
+% <kbd>java -jar iago-<var>version</var>.jar -f config/<var>my_config</var>.scala</kbd>
+</pre>
+Don't assume that you can skip the package/unzip steps if you're just changing a config file. You need to re-package and unzip again.
+
+If you are using Iago as a library, for example, in the case of testing over the Thrift protocol or building more complex tests with HTTP or Memcached/Kestrel, you should instead add a task to your project's configuration. See <a href="#Configuring Your Test">Configuring Your Test</a> for more information.
 
 [Top](#Top)
 
@@ -443,17 +454,24 @@ You can specify any of the following parameters:
 <tr>
     <td><code>loggers</code></td>
     <td><p>A List of LoggerFactories; allows you to define the type and level of logging you want</p>
-    <p><b>Example: </b></p><pre>loggers = new LoggerFactory(
-    level = Level.DEBUG
-    handlers = ConsoleHandler
-) = "preflight"</pre></td>
+    <p><b>Example:</b></p>
+<pre>import com.twitter.logging.LoggerFactory
+import com.twitter.logging.config._
+
+new ParrotLauncherConfig {
+  ...
+  loggers = new LoggerFactory(
+    level = Level.DEBUG,
+    handlers = new ConsoleHandlerConfig()
+  )
+} </pre></td>
     <td><i>Nil</i></td>
 </tr>
 <tr>
     <td><code>numFeederInstances</code></td>
     <td><p>Will bring up the specified number of feeder instances</p>
     <p><b>Example: </b><code>numFeederInstances = 2</code></p></td>
-    <td><i>1</i></td>
+    <td>1</td>
 </tr>
 <tr>
     <td><code>numInstances</code></td>
