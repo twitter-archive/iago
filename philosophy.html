@@ -73,43 +73,54 @@
     <div class="container">
       <header class="jumbotron subhead" id="overview">
         <h1>Philosophy</h1>
-        <p class="lead">Iago has a specific point of view about load testing. Understanding 
-          that point of view will help in making a decision to use it.</p>
-        <p>First of all, Iago is primarily a load generation library. It is designed
-          to be used by software engineers who have some familiarity with a JVM language such as
-          Java or Scala. While it's possible to use Iago as a stand-alone load testing application,
-          this is not its strong suit today and you will probably be happier with other tools
-          if that is what you need.</p>
-        <p>That said, it is also designed to be very easy to use. It usually requires
+        <p class="lead">Iago has a specific point of view about load testing. Understanding
+          that point of view will help you to decide whether to use it.</p>
+        <p>Iago is primarily a load generation library. It is designed
+          for software engineers familiar with a JVM language such as
+          Java or Scala. If you want to test an API under load, Iago is great.
+          While you can use Iago as a stand-alone load testing application,
+          this is not its strong suit today; if that is what you want, you will probably be
+          happier with other tools.</p>
+        <p>That said, if you are a programmer who wants to test an API under load, Iago is very easy
+           to use. Stand-alone load-test applications are great if you want to repeatedly get
+           http://example.com/, but if you instead want to repeatedly exercise an API, they
+           probably don't do what you want. Iago shines here.
+        <p>If you've already written a test client for your API, you've probably already written
+          the code that Iago can use to exercise that API. It usually requires
           more code to write a test client than it does to write a load test using Iago. Indeed,
           the code from a test client is usually just what you need to write your load test. This
           is deliberate, because we believe that people who most need Iago are those who find
-          themselves writing their own load tests late at night after a release has gone bad.
-          Use Iago, it's easier!</p>
-        <p>Another strong suit of Iago is its ability to accurately replicate production traffic,
-          with a heavy emphasis on modelling open systems (ie, systems which recieve requests
-          independent of their ability to service them). Unlike many open source and commercially
-          available load generators, Iago does not attempt to model users with threads, has no
-          concept of think time, and is not particularly amenable to characterizing load in terms
-          of concurrent users</p>
-        </p>Instead, Iago focuses on requests per second and has built-in support for statistical
-          models such as an exponential distribution (used to model a Poisson Process), uniform
-          distributions, as well as supporting easily writing your own request distribution either
-          in terms of sums of distribution or your own implementation. Under the hood, Iago goes
-          the extra mile in terms of reliably meeting the arrival times your distribution specifies,
+          themselves writing their own load tests late at night after a release has gone bad.</p>
+        <p>Iago accurately replicates production traffic. It models open systems,
+          systems which recieve requests independent of their ability to service them.
+          Typical load generators measure the
+          time it takes for <var>M</var> threads to make <var>N</var> requests, waiting for a
+          response to each request before sending the next; if your system slows down under load,
+          these load testers thus mercifully slow down their pace to match.
+          That's a fine thing to measure; many systems behave this way. But maybe your
+          service isn't such a system; maybe it's exposed on the internet.
+          Maybe you want to know how your system behaves when <var>N</var>
+          requests per second come in with no "mercy" if it slows down.</p>
+        <p>Iago focuses on requests per second and has built-in support for statistical
+          models such as an exponential distribution (used to model a Poisson Process) and uniform
+          distributions. You can also write your own request distribution, either
+          in terms of sums of distribution or your own implementation. Iago
+          reliably meets the arrival times your distribution specifies,
           even when rates and wait times are high.</p>
-        <p>Speaking of high request rates, Iago supports arbitrarily high rates of traffic via
-          built-in support for creating clusters. At Twitter, engineers regularly run load tests
+        <p>Iago supports arbitrarily high rates of traffic via
+          built-in support for creating clusters: if one machine can't generate the load you need,
+          then Iago can launch jobs on more machines. At Twitter, engineers regularly run load tests
           that generate in excess of 100K requests per second or more. Single instances of Iago
           can easily achieve anywhere from 1K to 10K rps from commodity hardware, only limited by
           the particulars of your protocol needs.</p>
-        <p>Equally important is Iago's ability to be extended. Because our target users are other
-          engineers, it is critical that every possible knob be available to turn. In fact, you
-          can easily write your own knobs, protocols, data sources, management interfaces or
-          whatever else you can imagine because Iago's components are designed from the ground
-          up to be extended or replaced.
-        <p>In short, Iago is the load generator we used to wish we had. Now that we've written
-          it, we want to share it with like-minded engineers who appreciate its capabilities.</p>
+        <p>You can extend or replace Iago's components. Because our target users are other
+          engineers, it is critical that every knob be available to turn. You
+          can write your own protocols, data sources, management interfaces or
+          whatever else you can imagine.
+        <p>Iago is the load generator we wished for. Now that we have it,
+          we want to share it with like-minded engineers who appreciate its capabilities.
+          To get started with Iago, <a href="https://github.com/twitter/iago/">view it on
+          Github, download it, and read its README</a>.</p>
       </header>
     </div><!-- /container -->
 

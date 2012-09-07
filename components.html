@@ -76,19 +76,22 @@
         <p class="lead">While Iago attempts to make life simple for developers, there's a lot
 happening under the hood to accomplish that goal.</p>
       </header>
-      <p>Server - This sends traffic to the system under test, as well as logging critical
-      metrics such as response time. The Server is horizontally scalaable -- you can have
+      <p><strong>Server</strong> sends traffic to the system under test, as well as logging critical
+      metrics such as response time. The Server is horizontally scalable&emdash;you can have
       one or hundreds if you desire. The amount of traffic one Server can generate is
       dependent on a wide variety of factors including how many request per second it can
       build, the amount of bandwidth a request needs, the response time of your service vis
       a vis the number of ephemeral sockets available, etc. At Twitter we regularly find that
       an untuned Server can support anywhere from 5K to 10K rps, provided requests are
       straightforward to create.</p>
-      <p>Feeder - This sends log lines to the Server. It can speak to multiple Servers, and
+      <p><strong>Feeder</strong> sends log lines to the Server.
+      It can speak to multiple Servers, and
       itself is also horizontally scalable if for some reason there is a bottleneck getting
       the raw data  used to create requests to the Server. Typically the Feeder logs are the
       first place to look to troubleshoot Iago.</p>
-      <p>Launcher - This provides the primary method of launching the Feeder and Server. It is
+      <p><strong>Launcher</strong> launches the Feeder and Server. If you're running one server
+      and one feeder, this might be simple; but if you're launching feeders and servers on several
+      machines, the launcher has more to do. It is
       extensible, in that you can plug your own behavior into the Launcher relatively easily.
       At Twitter, it plugs into our grid computing system, Mesos, as well as integrating
       naturally with HDFS. In local mode, it assumes you can run a load test from the system
