@@ -83,12 +83,13 @@ Replaying transactions at a fixed rate enables you to study the behavior of your
 
 ### Supported Services
 
-Iago understands service requests in the following formats:
+Iago can generate service requests that travel the net in different ways and are in different formats. The code that does this is in a Transport, a class that extends <code>ParrotTransport</code>. Iago comes with several Transports already defined. When you configure your test, you will need to set some parameters; to understand which of those parameters are used and how they are used, you probably want to look at the source code for your test's Transport class.
 
-* HTTP
-* Thrift
-* Memcached / Kestrel
-* UDP
+* HTTP: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala">FinagleTransport</a>
+* Thrift: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/ThriftTransport.scala">ThriftTransport</a>
+* Memcached: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/MemcacheTransport.scala">MemcacheTransport</a>
+* Kestrel: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/KestrelTransport.scala">KestrelTransport</a>
+* UDP: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/ParrotUdpTransport.scala">ParrotUdpTransport</a>
 
 Your service is typically an HTTP or Thrift service written in either Scala or Java.
 
