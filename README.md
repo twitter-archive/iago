@@ -332,7 +332,11 @@ You define your Iago subclass to execute your service and map transactions to re
 
 ## Configuring Your Test
 
-To configure your test, create a `launcher.scala` file that that creates a `ParrotLauncherConfig` instance with the configuration parameters you want to set. The following example shows parameters for testing a Thrift service:
+To configure your test, create a `launcher.scala` file that that creates a `ParrotLauncherConfig` instance with the configuration parameters you want to set.
+
+There are several parameters to set. A good one to <a href="#Supported Services">figure out early is <code>transport</code></a>; that will in turn help you to find out what, e.g., <code>responseType</code> you need.
+
+The following example shows parameters for testing a Thrift service:
 
 ```scala
 import com.twitter.parrot.config.ParrotLauncherConfig
@@ -346,7 +350,7 @@ new ParrotLauncherConfig {
   requestRate = 1
   numInstances = 1
   duration = 5
-  timeUnit = "MINUTES"
+  timeUnit = "MINUTES" // affects duration; does not affect requestRate
   role = "preflight"
 
   imports = "import com.twitter.example.EchoLoadTest"
