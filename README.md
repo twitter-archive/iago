@@ -351,7 +351,6 @@ new ParrotLauncherConfig {
   numInstances = 1
   duration = 5
   timeUnit = "MINUTES" // affects duration; does not affect requestRate
-  role = "preflight"
 
   imports = "import com.twitter.example.EchoLoadTest"
   responseType = "Array[Byte]"
@@ -419,7 +418,7 @@ You can specify any of the following parameters:
     <td><code>header</code></td>
     <td><p>A string value that specifies the HTTP Host header.</p>
     <p><b>Example: </b><code>header = "api.yourdomain.com"</code></p></td>
-    <td><code>api.yourdomain.com</code></td>
+    <td><code>""</code></td>
 </tr>
 <tr>
     <td><code>duration</code></td>
