@@ -52,7 +52,7 @@ We support Scala 2.9 and recommend you clone the latest master: <a href="https:/
 
 Launch Iago from the distribution with `java` `-jar` *iago_jar* `-f` *your_config*. This will create the Iago processes for you and configure it to use your transactions. To kill a running job, add `-k` to your launch parameters: `java` `-jar` *iago_jar* `-f` *your_config* `-k`.
 
-If you launch your Iago job on your local machine and an old Iago job is still running, it probably won't get far: it will attempt to re-user a port and fail. You want to kill the running job, as described above.
+If you launch your Iago job on your local machine and an old Iago job is still running, it probably won't get far: it will attempt to re-use a port and fail. You want to kill the running job, as described above.
 
 <em>If you build via Maven,</em> then you might wonder "How do I launch Iago 'from the distribution'?" The steps are:
 <pre>
