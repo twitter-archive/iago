@@ -453,7 +453,7 @@ You can specify any of the following parameters:
     <td><code>requestRate</code></td>
     <td><p>An integer value that specifies the number of requests per second to submit to your service.</p>
     <p><b>Example: </b><code>requestRate = 10</code></p></td>
-    <p>Note: if using multiple server instances, requestRate is per-instance, not aggregate.</p>
+    <p>Note: if using multiple server instances, requestRate is <b>per-instance</b>, not aggregate, so effective rate is numInstances * requestRate.</p>
     <td><code>1</code></td>
 </tr>
 <tr>
