@@ -120,8 +120,7 @@ class ParrotUdpTransportSpec extends SpecificationWithJUnit {
         { transport.asInstanceOf[ParrotUdpTransport[ParrotRequest, String]].allRequests.get } must
           eventually(be(requestStrings.size))
       } finally {
-        feeder.shutdown()
-        server.shutdown()
+        feeder.shutdown() // this will implicitly shut down the server as well
       }
     }
   }
