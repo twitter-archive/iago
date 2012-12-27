@@ -25,6 +25,7 @@ import com.twitter.parrot.thrift.TargetHost
 import com.twitter.util.{Promise, Duration, Future}
 import java.nio.ByteOrder.BIG_ENDIAN
 import java.util.concurrent.TimeUnit
+import java.util.logging.{Logger => JLogger}
 import org.jboss.netty.buffer.ChannelBuffers
 import org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH
 import org.jboss.netty.handler.codec.http._
@@ -43,7 +44,10 @@ class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
     .hostConnectionLimit(config.hostConnectionLimit)
     .hostConnectionMaxIdleTime(Duration(config.hostConnectionMaxIdleTimeInMs, TimeUnit.MILLISECONDS))
     .hostConnectionMaxLifeTime(Duration(config.hostConnectionMaxLifeTimeInMs, TimeUnit.MILLISECONDS))
+    .requestTimeout(Duration(config.requestTimeoutInMs, TimeUnit.MILLISECONDS))
+    .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
     .keepAlive(true)
+//    .logger(JLogger.getLogger("com.twitter.finagle")) // enable for extreme debugging
     .reportTo(new OstrichStatsReceiver)
 
   var allRequests = 0
@@ -78,8 +82,9 @@ class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
 """
 ===================== HttpRequest ======================
 %s
+%s
 ========================================================"""
-      .format(httpRequest.toString)
+      .format(request.target, httpRequest.toString)
     )
 
     client flatMap { service: Service[HttpRequest, HttpResponse] =>

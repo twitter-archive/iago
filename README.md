@@ -25,9 +25,9 @@
 
 ## Iago Quick Start
 
-NOTE: This repo has only recently been made public and our velocity is high at the moment, with significant work being done on documentation in particular. Please join iago-users@googlegroups.com (https://groups.google.com/d/forum/iago-users) for updates and to ask pressing questions.
+NOTE: This repo has only recently been made public and our velocity is high at the moment. Please join [iago-users@googlegroups.com](https://groups.google.com/d/forum/iago-users) for updates and to ask questions.
 
-If you are already familiar with the Iago Load Generation tool, follow these steps to get started; otherwise, start with the <a href="#Iago Overview">Iago Overview</a>. For questions, please contact <a href="mailto:iago-users@googlegroups.com">iago-users@googlegroups.com</a>.
+If you are already familiar with the Iago Load Generation tool, follow these steps to get started; otherwise, start with the <a href="http://twitter.github.com/iago/">Iago Overview</a> and perhaps <a href="http://twitter.github.com/iago/philosophy.html">Iago Philosophy</a>, also known as "Why Iago?". For questions, please contact [iago-users@googlegroups.com](https://groups.google.com/d/forum/iago-users).
 
 <a name="Iago Prerequisites"></a>
 
@@ -36,7 +36,7 @@ If you are already familiar with the Iago Load Generation tool, follow these ste
 1. Download and unpack the Iago distribution.
 We support Scala 2.9 and recommend you clone the latest master: <a href="https://github.com/twitter/iago/zipball/master">master</a>.
 
-2. Read the documentation. We'll be adding more recommended steps here shortly.
+2. Read the documentation.
 
 <a name="Preparing Your Test"></a>
 
@@ -50,7 +50,18 @@ We support Scala 2.9 and recommend you clone the latest master: <a href="https:/
 
 ### Executing Your Test
 
-Launch Iago from the distribution with `java` `-jar` *iago_jar* `-f` *your_config*. This will create the Iago processes for you and configure it to use your transactions. To kill a running job, add `-k` to your launch parameters: `java` `-jar` *parrot_jar* `-f` *your_config* `-k`.
+Launch Iago from the distribution with `java` `-jar` *iago_jar* `-f` *your_config*. This will create the Iago processes for you and configure it to use your transactions. To kill a running job, add `-k` to your launch parameters: `java` `-jar` *iago_jar* `-f` *your_config* `-k`.
+
+If you launch your Iago job on your local machine and an old Iago job is still running, it probably won't get far: it will attempt to re-use a port and fail. You want to kill the running job, as described above.
+
+<em>If you build via Maven,</em> then you might wonder "How do I launch Iago 'from the distribution'?" The steps are:
+<pre>
+% <kbd>mvn package -DskipTests</kbd>
+% <kbd>mkdir tmp; cd tmp</kbd>
+% <kbd>unzip ../target/iago-<var>version</var>-package-dist.zip</kbd>
+% <kbd>java -jar iago-<var>version</var>.jar -f config/<var>my_config</var>.scala</kbd>
+</pre>
+Don't assume that you can skip the package/unzip steps if you're just changing a config file. You need to re-package and unzip again.
 
 If you are using Iago as a library, for example, in the case of testing over the Thrift protocol or building more complex tests with HTTP or Memcached/Kestrel, you should instead add a task to your project's configuration. See <a href="#Configuring Your Test">Configuring Your Test</a> for more information.
 
@@ -72,12 +83,13 @@ Replaying transactions at a fixed rate enables you to study the behavior of your
 
 ### Supported Services
 
-Iago understands service requests in the following formats:
+Iago can generate service requests that travel the net in different ways and are in different formats. The code that does this is in a Transport, a class that extends <code>ParrotTransport</code>. Iago comes with several Transports already defined. When you configure your test, you will need to set some parameters; to understand which of those parameters are used and how they are used, you probably want to look at the source code for your test's Transport class.
 
-* HTTP
-* Thrift
-* Memcached / Kestrel
-* UDP
+* HTTP: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/FinagleTransport.scala">FinagleTransport</a>
+* Thrift: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/ThriftTransport.scala">ThriftTransport</a>
+* Memcached: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/MemcacheTransport.scala">MemcacheTransport</a>
+* Kestrel: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/KestrelTransport.scala">KestrelTransport</a>
+* UDP: Use <a href="https://github.com/twitter/iago/blob/master/src/main/scala/com/twitter/parrot/server/ParrotUdpTransport.scala">ParrotUdpTransport</a>
 
 Your service is typically an HTTP or Thrift service written in either Scala or Java.
 
@@ -91,6 +103,8 @@ For replay, Iago recommends you scrub your logs to only include requests which m
 
 * **Idempotent**, meaning that re-execution of a transaction any number of times yields the same result as the initial execution.
 * **Commutative**, meaning that transaction order is not important. Although transactions are initiated in replay order, Iago's internal behavior may change the actual execution order to guarantee the transaction rate. Also, transactions that implement `Future` responses are executed asynchronously. You can achieve ordering, if required, by using Iago as a library and initiating new requests in response to previous ones. Examples of this are available.
+
+Unless you change your configuration's <code>reuseFile</code> parameter, make sure that your sample log has at least 1000 items.
 
 [Top](#Top)
 
@@ -318,7 +332,11 @@ You define your Iago subclass to execute your service and map transactions to re
 
 ## Configuring Your Test
 
-To configure your test, create a `launcher.scala` file that that creates a `ParrotLauncherConfig` instance with the configuration parameters you want to set. The following example shows parameters for testing a Thrift service:
+To configure your test, create a `launcher.scala` file that that creates a `ParrotLauncherConfig` instance with the configuration parameters you want to set.
+
+There are several parameters to set. A good one to <a href="#Supported Services">figure out early is <code>transport</code></a>; that will in turn help you to find out what, e.g., <code>responseType</code> you need.
+
+The following example shows parameters for testing a Thrift service:
 
 ```scala
 import com.twitter.parrot.config.ParrotLauncherConfig
@@ -332,8 +350,7 @@ new ParrotLauncherConfig {
   requestRate = 1
   numInstances = 1
   duration = 5
-  timeUnit = "MINUTES"
-  role = "preflight"
+  timeUnit = "MINUTES" // affects duration; does not affect requestRate
 
   imports = "import com.twitter.example.EchoLoadTest"
   responseType = "Array[Byte]"
@@ -363,7 +380,7 @@ You can specify any of the following parameters:
 </tr>
 <tr>
     <td><code>log</code></td>
-    <td><p>A string value that specifies the complete path to the log you want Iago to replay. The log should be on your local file system.</p>
+    <td><p>A string value that specifies the complete path to the log you want Iago to replay. The log should be on your local file system. The log should have at least 1000 items or you should change the <code>reuseFile</code> parameter.</p>
     <p><b>Example: </b><code>log = "logs/yesterday.log"</code></p></td>
     <td><b>Required</b></td>
 </tr>
@@ -401,7 +418,7 @@ You can specify any of the following parameters:
     <td><code>header</code></td>
     <td><p>A string value that specifies the HTTP Host header.</p>
     <p><b>Example: </b><code>header = "api.yourdomain.com"</code></p></td>
-    <td><code>api.yourdomain.com</code></td>
+    <td><code>""</code></td>
 </tr>
 <tr>
     <td><code>duration</code></td>
@@ -436,23 +453,30 @@ You can specify any of the following parameters:
     <td><code>requestRate</code></td>
     <td><p>An integer value that specifies the number of requests per second to submit to your service.</p>
     <p><b>Example: </b><code>requestRate = 10</code></p>
-    <p>Note: if using multiple server instances, requestRate is per-instance, not aggregate, so effective rate becomes numInstances * requestRate.</p></td>
+    <p>Note: if using multiple server instances, requestRate is per-instance, not aggregate.</p></td>
     <td><code>1</code></td>
 </tr>
 <tr>
     <td><code>loggers</code></td>
     <td><p>A List of LoggerFactories; allows you to define the type and level of logging you want</p>
-    <p><b>Example: </b><code>loggers = new LoggerFactory(
-    level = Level.DEBUG
-    handlers = ConsoleHandler
-  ) = "preflight"</code></p></td>
+    <p><b>Example:</b></p>
+<pre>import com.twitter.logging.LoggerFactory
+import com.twitter.logging.config._
+
+new ParrotLauncherConfig {
+  ...
+  loggers = new LoggerFactory(
+    level = Level.DEBUG,
+    handlers = new ConsoleHandlerConfig()
+  )
+} </pre></td>
     <td><i>Nil</i></td>
 </tr>
 <tr>
     <td><code>numFeederInstances</code></td>
     <td><p>Will bring up the specified number of feeder instances</p>
     <p><b>Example: </b><code>numFeederInstances = 2</code></p></td>
-    <td><i>1</i></td>
+    <td>1</td>
 </tr>
 <tr>
     <td><code>numInstances</code></td>
@@ -540,7 +564,9 @@ You can specify any of the following parameters:
 <tr>
     <td><code>createDistribution</code></td>
     <td><p>You can use this field to create your own distribution rate, instead of having a constant flow. You will need to create a subclass of RequestDistribution and import it.</p>
-    <p><b>Example: </b><code>createDistribution = "createDistribution = { rate => new MyDistribution(rate) }"</code></p></td>
+    <p><b>Example: </b><pre>createDistribution = """createDistribution = {
+    rate => new MyDistribution(rate)
+}"""</pre></p></td>
     <td><i>""</i></td>
 </tr>
 </tbody>

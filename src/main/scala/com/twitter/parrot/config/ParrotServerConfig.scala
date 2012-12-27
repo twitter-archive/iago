@@ -57,6 +57,8 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   var hostConnectionLimit = Integer.MAX_VALUE
   var hostConnectionMaxIdleTimeInMs = 5000
   var hostConnectionMaxLifeTimeInMs = Integer.MAX_VALUE
+  var requestTimeoutInMs = Integer.MAX_VALUE
+  var tcpConnectTimeoutInMs = Integer.MAX_VALUE
   var idleTimeoutInSec = 300
   var reuseConnections = true
   var thriftClientId = ""

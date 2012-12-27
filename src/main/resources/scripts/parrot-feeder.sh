@@ -21,7 +21,7 @@ DEBUG_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=500
 JAVA_OPTS="-server $GC_OPTS $HEAP_OPTS $PROFILE_OPTS" #$DEBUG_OPTS"
 
 # Used to set JAVA_HOME sanely if not already set.
-function find_java() {
+function find_java {
   if [ ! -z $JAVA_HOME ]; then
     return
   fi
@@ -40,7 +40,7 @@ case "$1" in
 
   # start-local is meant for development and runs your server in the foreground.
   start-local)
-    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp ${APP_HOME}/*jar ${MAIN_CLASS} -f ${APP_HOME}/config/target/local-feeder.scala $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+    ${JAVA_HOME}/bin/java ${JAVA_OPTS} -cp "${APP_HOME}/*:${APP_HOME}/libs/*" ${MAIN_CLASS} -f ${APP_HOME}/config/target/local-feeder.scala $2 $3 $4 $5 $6 $7 $8 $9 ${10}
 echo "done."
   ;;
 

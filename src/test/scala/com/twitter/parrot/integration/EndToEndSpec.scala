@@ -63,8 +63,8 @@ class EndToEndSpec extends SpecificationWithJUnit {
         case e: Exception => fail(e.getMessage)
       }
       finally {
+        // Feeder will shutdown Server
         feeder.shutdown()
-        server.shutdown()
       }
     }
 
@@ -102,8 +102,8 @@ class EndToEndSpec extends SpecificationWithJUnit {
         case e: Exception => fail(e.getMessage)
       }
       finally {
+        // Feeder will shutdown Server
         feeder.shutdown()
-        server.shutdown()
       }
     }
   }

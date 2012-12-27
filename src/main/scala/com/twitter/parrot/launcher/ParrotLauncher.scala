@@ -163,8 +163,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
   private[this] def createRemoteConfigs() {
     log.debug("Creating configs.")
 
-    List( ("/templates/template.mesos",         targetDstFolder + "/config.mesos"),
-          ("/templates/template-feeder.scala",  targetDstFolder + "/mesos-feeder.scala"),
+    List( ("/templates/template-feeder.scala",  targetDstFolder + "/mesos-feeder.scala"),
           ("/templates/template-server.scala",  targetDstFolder + "/mesos-server.scala") ) foreach {
       case (src, dst) => templatize(src, dst, symbols)
     }
