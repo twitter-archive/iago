@@ -293,10 +293,10 @@ public class EchoLoadTest extends ThriftLoadTest {
     client = new EchoService.ServiceToClient(service(), new TBinaryProtocol.Factory()); // 4
   }
 
-  public void processLines(ParrotJob job, List&lt;String&gt; lines) {                         // 5
+  public void processLines(ParrotJob job, List<String> lines) {                         // 5
     for(String line: lines) {
-      Future&lt;String&gt; future = client.echo(line);
-      future.addEventListener(new FutureEventListener&lt;String&gt;() {
+      Future<String> future = client.echo(line);
+      future.addEventListener(new FutureEventListener<String>() {
         public void onSuccess(String msg) {
           System.out.println("response: " + msg);
         }
