@@ -20,7 +20,7 @@ DEBUG_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=500
 JAVA_OPTS="-server $GC_OPTS $HEAP_OPTS $PROFILE_OPTS" # $DEBUG_OPTS"
 
 # Used to set JAVA_HOME sanely if not already set.
-function find_java {
+find_java () {
   if [ ! -z $JAVA_HOME ]; then
     return
   fi
