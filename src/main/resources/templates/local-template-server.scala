@@ -55,6 +55,7 @@ new ParrotServerConfig[#{requestType}, #{responseType}] {
   clusterService = Some(new ParrotClusterImpl(this))
 
   // configure after transport so that service is valid
+  loadTestName = "#{loadTestName}"
   loadTestInstance = Some(#{loadTest})
 
   // Put config options past this point at your own risk

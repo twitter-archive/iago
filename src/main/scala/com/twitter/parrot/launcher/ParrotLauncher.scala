@@ -61,6 +61,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("hostConnectionMaxLifeTimeInMs" -> config.hostConnectionMaxLifeTimeInMs.toString),
     ("jobName" -> job),
     ("loadTest" -> config.loadTest),
+    ("loadTestName" -> config.loadTestName),
     ("logFile" -> logName),
     ("maxPerHost" -> config.maxPerHost.toString),
     ("maxRequests" -> config.maxRequests.toString),
