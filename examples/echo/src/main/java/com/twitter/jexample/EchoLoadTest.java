@@ -4,7 +4,6 @@ import com.twitter.example.thrift.EchoService;
 import com.twitter.parrot.processor.ThriftLoadTest;
 import com.twitter.parrot.server.ParrotRequest;
 import com.twitter.parrot.server.ParrotService;
-import com.twitter.parrot.thrift.ParrotJob;
 import com.twitter.util.Future;
 import com.twitter.util.FutureEventListener;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -19,7 +18,7 @@ public class EchoLoadTest extends ThriftLoadTest {
         client = new EchoService.ServiceToClient(service(), new TBinaryProtocol.Factory());
     }
 
-    public void processLines(ParrotJob job, List<String> lines) {
+    public void processLines(List<String> lines) {
         for(String line: lines) {
             Future<String> future = client.echo(line);
             future.addEventListener(new FutureEventListener<String>() {
