@@ -1,0 +1,55 @@
+parrot_server_create = Process(
+    name = 'parrot_create',
+    cmdline = '{{{{pkg}}.copy_command}} && unzip {{{{pkg}}.package}} && rm -f {{{{pkg}}.package}}'
+).bind(pkg = 'packer[#{user}][parrot_server_#{jobName}][latest]')
+
+parrot_server_process = Process(
+    name = 'parrot_server_#{jobName}',
+    cmdline = 'sh ./scripts/parrot-server.sh start-mesos ' +
+      '-D httpPort={{thermos.ports[http]}} -D thriftPort={{thermos.ports[thrift]}} ' +
+      '-D shardId={{mesos.instance}}'
+    )
+
+parrot_server_task = SequentialTask(
+    resources = Resources(cpu = #{numCpus}, ram = #{mesosRamInMb} * MB, disk = #{serverDiskInMb} * MB),
+    processes = [parrot_server_create, parrot_server_process]
+    )
+
+parrot_server_job = Job(
+    name = 'parrot_server_#{jobName}',
+    cluster = '#{mesosCluster}',
+    role = '#{user}',
+    task = parrot_server_task,
+    instances = #{numInstances},
+    service = False,
+    constraints = {'host':'limit:#{maxPerHost}'}
+    )
+
+parrot_feeder_create = Process(
+    name = 'parrot_create',
+    cmdline = '{{{{pkg}}.copy_command}} && unzip {{{{pkg}}.package}} && rm -f {{{{pkg}}.package}}'
+).bind(pkg = 'packer[#{user}][parrot_feeder_#{jobName}][latest]')
+
+parrot_feeder_process = Process(
+    name = 'parrot_feeder_#{jobName}',
+    cmdline = '#{hdfsCommand} sh ./scripts/parrot-feeder.sh ' + # {{thermos.ports[jdwp]}} {{thermos.ports[yjp]}}
+       'start-mesos -D httpPort={{thermos.ports[http]}} -D thriftPort={{thermos.ports[thrift]}}'
+    )
+
+parrot_feeder_task = SequentialTask(
+    resources = Resources(cpu = 1.0, ram = 2048 * MB, disk = #{feederDiskInMb} * MB),
+    processes = [parrot_feeder_create, parrot_feeder_process]
+    )
+
+parrot_feeder_job = Job(
+    name = 'parrot_feeder_#{jobName}',
+    cluster = '#{mesosCluster}',
+    role = '#{user}',
+    task = parrot_feeder_task,
+    instances = #{numFeederInstances},
+    service = False,
+    max_task_failures = 3,
+    constraints = {'host': 'limit:#{maxPerHost}'}
+    )
+
+jobs = [parrot_server_job, parrot_feeder_job]

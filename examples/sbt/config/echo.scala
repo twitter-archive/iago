@@ -3,7 +3,7 @@ import com.twitter.parrot.config.ParrotLauncherConfig
 new ParrotLauncherConfig {
   distDir = "."
   jobName = "load_echo"
-  port = 50017
+  port = 8081
   victims = "localhost"
   log = "config/sample.log"
   requestRate = 1
@@ -19,4 +19,3 @@ new ParrotLauncherConfig {
   loadTest = "new EchoLoadTest(service.get)"
   parser = "thrift"
 }
-
