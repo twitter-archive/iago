@@ -15,19 +15,25 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import collection.mutable
+import scala.collection.mutable
+import scala.util.Random
+
 import com.twitter.finagle.Service
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.util.{IgnorantTrustManager, IgnorantHostnameVerifier}
-import com.twitter.util._
-import javax.net.ssl.{TrustManager, SSLContext, HttpsURLConnection}
-import util.Random
+import com.twitter.parrot.util.IgnorantHostnameVerifier
+import com.twitter.parrot.util.IgnorantTrustManager
+import com.twitter.util.Future
+import com.twitter.util.Time
+import com.twitter.util.Try
+
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
 
 trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
   val log = Logger.get(getClass.getName)
   private[this] val handlers = new mutable.ListBuffer[Try[Rep] => Unit]()
-
   override def apply(request: Req): Future[Rep] =
     sendRequest(request) respond { k =>
       log.debug("Response: " + k.toString)
@@ -38,7 +44,7 @@ trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
 
   def createService(config: ParrotServerConfig[Req, Rep]) = new ParrotService[Req, Rep](config)
 
-  def shutdown() { }
+  def shutdown() {}
 
   def stats(response: Rep): Seq[String] = Nil
 

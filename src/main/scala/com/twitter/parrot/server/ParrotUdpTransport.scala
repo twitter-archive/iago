@@ -16,21 +16,24 @@ limitations under the License.
 package com.twitter.parrot.server
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.util.{TimerFromNettyTimer => FinagleTimer}
-import com.twitter.finagle.{ChannelException, RequestTimeoutException}
+import com.twitter.finagle.util.{ TimerFromNettyTimer => FinagleTimer }
+import com.twitter.finagle.{ ChannelException, RequestTimeoutException }
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util._
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
+import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeUnit }
 import org.jboss.netty.bootstrap.ConnectionlessBootstrap
 import org.jboss.netty.channel._
-import org.jboss.netty.channel.group.{ChannelGroup, DefaultChannelGroup}
+import org.jboss.netty.channel.group.{ ChannelGroup, DefaultChannelGroup }
 import org.jboss.netty.channel.socket.nio.NioDatagramChannelFactory
 import org.jboss.netty.util.HashedWheelTimer
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import com.twitter.parrot.config.ParrotServerConfig
+import com.twitter.finagle.util.InetSocketAddressUtil
 
-trait ParrotUdpTransport[Req, Rep] extends ParrotTransport[ParrotRequest, Rep] {
+abstract class ParrotUdpTransport[Rep](config: ParrotServerConfig[ParrotRequest, Rep]) extends ParrotTransport[ParrotRequest, Rep] {
+
   def requestEncoder: Option[ChannelDownstreamHandler]
   def responseDecoder: Option[ChannelUpstreamHandler] // N.B.: must decode to objects of type Rep
 
@@ -39,12 +42,16 @@ trait ParrotUdpTransport[Req, Rep] extends ParrotTransport[ParrotRequest, Rep] {
 
   val allRequests = new AtomicInteger(0)
 
+  val config.HostPortListVictim(victimsString) = config.victim.value
+  val victims = InetSocketAddressUtil.parseHosts(victimsString)
+  val victim = victims(0)
+
   val clientHandler = new SimpleChannelUpstreamHandler {
     private[this] def reply(message: Try[Rep], channel: Channel) {
       val future = Option(channelFutureMap.get(channel.getId))
       future match {
         case Some(f) => f() = message
-        case None => ()
+        case None    => ()
       }
       channel.close()
     }
@@ -64,9 +71,9 @@ trait ParrotUdpTransport[Req, Rep] extends ParrotTransport[ParrotRequest, Rep] {
       def getPipeline(): ChannelPipeline = {
         (requestEncoder, responseDecoder) match {
           case (Some(enc), Some(dec)) => Channels.pipeline(enc, dec, clientHandler)
-          case (Some(enc), None) => Channels.pipeline(enc, clientHandler)
-          case (None, Some(dec)) => Channels.pipeline(dec, clientHandler)
-          case (None, None) => Channels.pipeline(clientHandler)
+          case (Some(enc), None)      => Channels.pipeline(enc, clientHandler)
+          case (None, Some(dec))      => Channels.pipeline(dec, clientHandler)
+          case (None, None)           => Channels.pipeline(clientHandler)
         }
       }
     })
@@ -79,14 +86,12 @@ trait ParrotUdpTransport[Req, Rep] extends ParrotTransport[ParrotRequest, Rep] {
   val timer = new FinagleTimer(new HashedWheelTimer(100, TimeUnit.MILLISECONDS))
 
   protected[server] def sendRequest(request: ParrotRequest): Future[Rep] = {
-    val host = request.target.host
-    val port = request.target.port
+
     val data = request.rawLine
 
-    log.debug("sending request: %s to %s:%d", data, host, port)
+    log.debug("sending request: %s to %s", data, victimsString)
     allRequests.incrementAndGet()
 
-    val victim = new InetSocketAddress(host, port)
     val connFuture = bootstrap.connect(victim)
     if (!connFuture.awaitUninterruptibly(connectTimeout.inMilliseconds)) {
       return Future.exception[Rep](new RequestTimeoutException(connectTimeout, "connecting"))
@@ -124,7 +129,7 @@ trait ParrotUdpTransport[Req, Rep] extends ParrotTransport[ParrotRequest, Rep] {
   }
 
   override def shutdown() {
-    channelFutureMap.values.foreach { _.cancel() }
+    channelFutureMap.values.asScala.foreach { _.raise(new FutureCancelledException) }
     channelGroup.disconnect().awaitUninterruptibly(5000)
     channelGroup.close().awaitUninterruptibly(5000)
     timer.stop()

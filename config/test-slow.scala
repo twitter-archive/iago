@@ -9,15 +9,10 @@ new ParrotServerConfig[ParrotRequest, Unit] {
   slopTimeInMs = 500
   thinkTime = 500
 
-  // SAME AS test-server.scala BELOW HERE
-  loggers = new LoggerFactory(
-    level = Level.DEBUG,
-    handlers = new ConsoleHandlerConfig()
-  )
+  com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)
 
   testHosts = List("api.twitter.com")
   charEncoding = "deflate"
-  httpHostHeader = "api.twitter.com"
 
   // for thrift
   parrotPort = 9999

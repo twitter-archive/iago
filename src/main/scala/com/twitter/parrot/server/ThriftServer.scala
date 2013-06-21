@@ -16,14 +16,14 @@ limitations under the License.
 package com.twitter.parrot.server
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.builder.{ServerBuilder, Server}
+import com.twitter.finagle.builder.{ ServerBuilder, Server }
 import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.finagle.thrift.ThriftServerFramedCodec
 import com.twitter.logging.Logger
 import com.twitter.ostrich.admin.BackgroundProcess
-import com.twitter.parrot.thrift.{ParrotState, ParrotStatus, ParrotServerService}
+import com.twitter.parrot.thrift.{ ParrotState, ParrotStatus, ParrotServerService }
 import java.net.InetSocketAddress
-import java.util.logging.{Logger => JLogger}
+import java.util.logging.{ Logger => JLogger }
 import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.server.TThreadPoolServer
 import org.apache.thrift.transport.TServerSocket
@@ -47,10 +47,16 @@ class ThriftServerImpl extends ThriftServer {
         .bindTo(new InetSocketAddress(port))
         .codec(ThriftServerFramedCodec())
         .name("finagle thrift server")
-// Enable only for debugging purposes.
-//        .logger(JLogger.getLogger("com.twitter.finagle"))
-//        .reportTo(new OstrichStatsReceiver)
+
+        // This is for looking at parrot-feeder to parrot-server finagle metrics. Enable only for
+        // debugging purposes.
+        //
+        //        .logger(JLogger.getLogger("com.twitter.finagle"))
+        //        .reportTo(new OstrichStatsReceiver)
+
         .build(service)
+        
+      log.trace("created a parrot server on port %d", port)
     } catch {
       case e: Exception =>
         e.printStackTrace()

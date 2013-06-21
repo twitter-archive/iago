@@ -15,170 +15,183 @@ limitations under the License.
 */
 package com.twitter.parrot.launcher
 
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import scala.util.matching.Regex
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotLauncherConfig
-import java.io.{File, PrintWriter, InputStreamReader, BufferedReader}
+import com.twitter.parrot.config.ParrotServerConfig
+import com.twitter.parrot.config.ParrotFeederConfig
+import com.twitter.parrot.util.ConsoleHandler
+import com.twitter.util.Eval
+import com.twitter.util.Config.fromRequired
+import scala.collection.mutable
+import java.util.regex.Pattern
+import java.net.URLClassLoader
 
 class ParrotLauncher(config: ParrotLauncherConfig) {
-  lazy val time = System.currentTimeMillis()
-
-  val user = if (config.role.length() > 0) {
-    config.role
-  }
-  else {
-    System.getenv("USER")
-  }
-  val job: String = config.jobName
-  val logFile: String = config.log
-  val victims: String = config.victims
-  val port: Int = config.port
-  val distDir: String = config.distDir
-
   private[this] val log = Logger.get(getClass)
-  private[this] val logName = config.log.split("/").last
+  private[this] val pmode =
+    if (config.localMode)
+      new ParrotModeLocal(config)
+    else
+      new ParrotModeMesos(config)
+  private[this] val scheme = config.scheme match {
+    case "https"   => "TransportScheme.HTTPS"
+    case "thrifts" => "TransportScheme.THRIFTS"
+    case _         => "TransportScheme.HTTP"
+  }
+  private[this] val scriptsDstFolder = config.distDir + "/scripts"
+  private[this] val victim = {
+    val victims = config.victims.value
+    config.victimClusterType match {
+      case "sdzk" =>
+        """ServerSetVictim("%s", "%s", %d)""".format(victims, config.victimZk,
+          config.victimZkPort)
+      case _ =>
+        """HostPortListVictim("%s")""".format(
+          if (victims.contains(":"))
+            victims
+          else
 
-  private[this] var diskUsed = 50L // we start with 50 MB because Parrot is 24MB and Mesos doubles it
-  private[this] val remoteLog = logFile
+            // given a string of the form "host0,host1,..", create a HostPortListVictim using the
+            // default port.
 
-  private[this] val zookeeper = config.zkHostName match {
-    case Some(host) => """Some("%s")""".format(host)
-    case None => "None"
+            victims.split("[ ,]").toList.map(_ + ":" + config.port).mkString(","))
+    }
   }
 
-  private[this] val symbols = Map[String, String](
+  private[this] val symbols = mutable.Map[String, String](
     ("batchSize" -> config.batchSize.toString),
+    ("classPath" -> config.classPath),
+    ("configType" -> config.configType),
     ("createDistribution" -> config.createDistribution),
     ("customLogSource" -> config.customLogSource),
-    ("diskUsed" -> diskUsed.toString),
-    ("doAuth" -> config.doOAuth.toString),
     ("duration" -> config.duration.toString),
-	("fullLog" -> config.log),
     ("header" -> config.header),
     ("hostConnectionCoresize" -> config.hostConnectionCoresize.toString),
     ("hostConnectionIdleTimeInMs" -> config.hostConnectionIdleTimeInMs.toString),
     ("hostConnectionLimit" -> config.hostConnectionLimit.toString),
     ("hostConnectionMaxIdleTimeInMs" -> config.hostConnectionMaxIdleTimeInMs.toString),
     ("hostConnectionMaxLifeTimeInMs" -> config.hostConnectionMaxLifeTimeInMs.toString),
-    ("jobName" -> job),
+    ("httpHostHeaderPort" -> config.port.toString),
+    ("imports" -> config.imports),
+    ("jobName" -> pmode.jobName),
     ("loadTest" -> config.loadTest),
-    ("logFile" -> logName),
-    ("maxPerHost" -> config.maxPerHost.toString),
+    ("logFile" -> pmode.logPath),
     ("maxRequests" -> config.maxRequests.toString),
-    ("numCpus" -> config.numCpus.toString),
     ("numFeederInstances" -> config.numFeederInstances.toString),
     ("numInstances" -> config.numInstances.toString),
-    ("port" -> port.toString),
-    ("processor" -> config.parser),
-    ("remoteLog" -> remoteLog),
+    ("port" -> config.port.toString),
     ("requestRate" -> config.requestRate.toString),
+    ("requestTimeoutInMs" -> config.requestTimeoutInMs.toString),
     ("requestType" -> config.requestType),
     ("responseType" -> config.responseType),
-    ("responseTypeImport" -> config.imports),
     ("reuseConnections" -> config.reuseConnections.toString),
     ("reuseFile" -> config.reuseFile.toString),
-    ("scheme" -> config.scheme),
+    ("scheme" -> scheme),
     ("serverXmx" -> config.serverXmx.toString),
+    ("tcpConnectTimeoutInMs" -> config.tcpConnectTimeoutInMs.toString),
     ("thriftClientId" -> config.thriftClientId),
     ("timeUnit" -> config.timeUnit),
+    ("traceLevel" -> config.traceLevel.toString),
     ("transport" -> config.transport),
-    ("user" -> user),
-    ("victims" -> victims),
-    ("zookeeper" -> zookeeper)
-  )
+    ("victim" -> victim))
 
-  def scriptsDstFolder = distDir + "/scripts"
-  def configDstFolder = distDir + "/config"
-  def targetDstFolder = configDstFolder + "/target"
+  private[this] lazy val regex = ("#\\{(" + symbols.keys.mkString("|") + ")\\}").r
+
+  def adjust(change: String) = pmode.adjust(change)
+
+  def kill = pmode.kill
 
   def start() {
-    log.info("Starting Parrot job named %s", job)
-
+    ConsoleHandler.start(config.traceLevel)
+    //printClassPath
+    log.info("Starting Parrot job named %s", pmode.jobName)
     try {
-      if(config.localMode) {
-        handleLogFile()
-        createLocalConfigs()
-        createScripts()
-        pauseUntilReady()
-        createLocalJobs()
-        cleanup()
-      } else {
-        handleLogFile()
-        createRemoteConfigs()
-        createScripts()
-        pauseUntilReady()
-        cleanup()
-      }
-    }
-    catch {
-      case t: Throwable => {
-        println("Caught exception: " + t.getMessage)
-        t.printStackTrace()
-      }
-    }
-    finally {
+      verifyConfig
+      pmode.cleanup
+      pmode.includeLog(symbols)
+      pmode.modeSymbols(symbols)
+      escapeValues
+      createScripts
+      createParrotConfigs
+      pmode.createConfig(templatize)
+      pauseUntilReady
+      pmode.createJobs
+      pmode.cleanup
+    } finally {
       CommandRunner.shutdown()
     }
   }
 
-  def kill() {
-    log.info("Killing Parrot job named: %s", job: String)
-    config.parrotTasks foreach { task =>
-      //CommandRunner("kill -9 `ps aux | grep local-%s.scala | awk '{print $2;}'`".format(task), true)
-	  val commandRunner = new CommandRunner("ps aux")
-	  commandRunner.run
-	  val psOutput = commandRunner.getOutput
-	  psOutput.split("\n").map {
-		line => if (line.contains("local-%s.scala".format(task))) {
-		  val pid = line.split("\\s+")(1)
-		  CommandRunner("kill -9 %s".format(pid))
-		}
-	  }
+  private[this] def verifyConfig {
+    if ("^[_A-Za-z0-9]+$".r.findFirstIn(pmode.jobName).isEmpty) {
+      log.fatal("job names can only be composed of letters, numbers, and underscores")
+      System.exit(1)
     }
-    CommandRunner.shutdown()
+    pmode.verifyConfig
+    requireDirectory(pmode.configDstFolder)
+    requireDirectory(pmode.targetDstFolder)
   }
 
-  def adjust(change: String) {
-    val adjustment = change.toInt
-    log.info("Adjusting load by %d RPS for job %s", adjustment, job: String)
-    config.zkNode = config.zkNode.format(job)
-    Adjustor.adjust(config, job, adjustment)
-    CommandRunner.shutdown()
+  private[this] def requireDirectory(directory: String) {
+    if (!(new File(directory).isDirectory))
+      new File(directory).mkdir()
   }
 
-  private[this] def handleLogFile() {
-    if (!(new File(logFile).exists)) {
-      throw new Exception("Couldn't find local logfile: %s".format(logFile))
-    }
+  private[this] def escapeValues {
+    symbols.foreach { case (k, v) => symbols(k) = v.replace("$", "\\$") }
   }
 
-  private[this] def createLocalConfigs() {
-    log.debug("Creating configs.")
-
-    List(("/templates/local-template-feeder.scala",  targetDstFolder + "/local-feeder.scala"),
-         ("/templates/local-template-server.scala",  targetDstFolder + "/local-server.scala") ) foreach {
-      case (src, dst) => templatize(src, dst, symbols)
-    }
-  }
-
-  private[this] def createRemoteConfigs() {
-    log.debug("Creating configs.")
-
-    List( ("/templates/template-feeder.scala",  targetDstFolder + "/mesos-feeder.scala"),
-          ("/templates/template-server.scala",  targetDstFolder + "/mesos-server.scala") ) foreach {
-      case (src, dst) => templatize(src, dst, symbols)
-    }
+  private[this] def printClassPath {
+    val cl: URLClassLoader = ClassLoader.getSystemClassLoader.asInstanceOf[URLClassLoader]
+    println(cl.getURLs.map(_.getFile).mkString(":"))
   }
 
   private[this] def createScripts() {
     log.debug("Creating scripts.")
-    if(!(new File(scriptsDstFolder).isDirectory)){
-      new File(scriptsDstFolder).mkdir()
+    requireDirectory(scriptsDstFolder)
+    List("common.sh", "local-parrot.sh", "parrot-feeder.sh", "parrot-server.sh").foreach(x =>
+      templatize("/scripts/" + x, scriptsDstFolder + "/" + x))
+  }
+
+  private[this] def createParrotConfigs() {
+    log.debug("Creating configs.")
+    val eval = new Eval()
+    config.parrotTasks.foreach { root =>
+      val name = root + ".scala"
+      val path = pmode.targetDstFolder + "/parrot-" + name
+      val file = templatize("/templates/template-" + name, path)
+      eval.compile("class Test {" + eval.toSource(file) + "}")
+    }
+  }
+
+  private[this] def templatize(src: String, dst: String): File = {
+
+    log.debug("opening resource: " + src)
+    val is = getClass.getResourceAsStream(src)
+    val br = new BufferedReader(new InputStreamReader(is))
+
+    val df = new File(dst)
+    writeToFile(df) { p =>
+      var line = ""
+      while ({ line = br.readLine; line != null })
+        p.println(regex.replaceAllIn(line, m => symbols(m group 1)))
     }
 
-    List("local-parrot.sh","parrot-feeder.sh", "parrot-server.sh") map { s =>
-      ("/scripts/" + s, scriptsDstFolder + "/" + s)
-    } foreach { case (src, dst) =>
-      templatize(src, dst, symbols)
+    br.close
+    df
+  }
+
+  private[this] def writeToFile(f: File)(op: PrintWriter => Unit) {
+    val p = new PrintWriter(f)
+    try {
+      op(p)
+    } finally {
+      p.close()
     }
   }
 
@@ -186,67 +199,10 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     if (!config.doConfirm) return
 
     var response = "no"
-    while (response != "yes" && response != "") {
-      print("Configs generated, are you ready to do some damage? [yes] ")
+    while (response != "") {
+      print("Configurations generated. Type 'quit' to quit or press enter to launch. ")
       response = Console.readLine()
-      if (response == "quit") throw new Exception("Quitting.")
+      if (response == "quit") throw new Exception("Quitting")
     }
   }
-
-  private[this] def createLocalJobs() {
-      CommandRunner("sh scripts/local-parrot.sh", true)
-  }
-
-  private[this] def cleanup() {
-    config.parrotTasks foreach { task =>
-      CommandRunner("rm %s-%s.zip".format(task, time))
-    }
-  }
-
-  private[this] def makeZip(name: String) {
-    println("Building Iago Bundle...")
-
-    //creates dist/project from root folder, as if dist/project is current dir
-    //CommandRunner("tar -zcf %s-%s.zip -C %s .".format(name, time, distDir))
-    CommandRunner("jar -Mcf %s-%s.zip -C %s .".format(name, time, distDir))
-  }
-
-  private[this] def writeToFile(f: File)(op: PrintWriter => Unit) {
-    val p = new PrintWriter(f)
-    try {
-      op(p)
-    }
-    finally {
-      p.close()
-    }
-  }
-
-  private[this] def templatize(src: String, dst: String, symbols: Map[String, String]) {
-    log.debug("opening resource: " + src)
-
-    val is = getClass.getResourceAsStream(src)
-    val br = new BufferedReader(new InputStreamReader(is))
-
-    if(!(new File(configDstFolder).isDirectory)){
-      throw new Exception("Did you package-dist? %s doesn't exist".format(configDstFolder))
-    }
-
-    if(!(new File (targetDstFolder).isDirectory)){
-      new File(targetDstFolder).mkdir()
-    }
-
-
-    writeToFile(new File(dst)) { p =>
-      var line = ""
-      while (line != null) {
-        line = br.readLine()
-        if (line != null) p.println(processLine(line, symbols))
-      }
-    }
-  }
-
-  private[this] def processLine(line: String, symbols: Map[String, String]) =
-    symbols.foldLeft(line) { case (result, (symbol, value)) =>
-      result.replaceAll("""\#\{%s\}""".format(symbol), value.toString)
-    }
 }

@@ -9,28 +9,22 @@ import org.jboss.netty.handler.codec.http.HttpResponse
 
 // HttpResponse here is because DumbTransport is a ParrotTransport[ParrotRequest, HttpResponse]
 new ParrotServerConfig[ParrotRequest, HttpResponse] {
-  loggers = new LoggerFactory(
-    level = Level.DEBUG,
-    handlers = new ConsoleHandlerConfig()
-  )
+  com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)
 
   httpPort = RandomSocket().getPort
 
   thriftServer = Some(new ThriftServer {
-    def start(server: ParrotServer[_, _], port: Int){}
+    def start(server: ParrotServer[_, _], port: Int) {}
     def shutdown() {}
   })
 
   clusterService = Some(new LocalCluster)
-  transport = Some(new DumbTransport)
-  queue = new RequestQueue(this)
 
   thinkTime = 0
   replayTimeCheck = false
   slopTimeInMs = 100
   testHosts = List("api.twitter.com")
   charEncoding = "deflate"
-  httpHostHeader = "api.twitter.com"
 
   // for thrift
   parrotPort = 9999

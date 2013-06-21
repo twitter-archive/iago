@@ -15,7 +15,7 @@ limitations under the License.
 */
 package com.twitter.parrot.feeder
 
-import collection.JavaConversions._
+import collection.JavaConverters._
 import collection.mutable
 import com.twitter.logging.Logger
 import com.twitter.ostrich.admin.{BackgroundProcess, ServiceTracker, Service}
@@ -34,23 +34,7 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   private[this] val requestsRead = new AtomicInteger(0)
   private[this] val isShutdown = new AtomicBoolean(false)
 
-  private[this] val victims = createVictims()
-  private[this] val parrotJob = new ParrotJob()
-      .setVictims(victims)
-      .setProcessor(config.parser)
-      .setName(config.jobName)
-
-  // arrivalRate trumps concurrency
-  if (config.requestRate != 0 && config.numThreads != 0) {
-    parrotJob.setArrivalRate(config.requestRate)
-  }
-  else {
-    parrotJob.setConcurrency(config.numThreads)
-    parrotJob.setArrivalRate(config.requestRate)
-  }
-
   private[this] val initializedParrots = mutable.Set[RemoteParrot]()
-  private[this] val jobs = mutable.Map[RemoteParrot, ParrotJobRef]()
 
   private[this] val allServers = new CountDownLatch(config.numInstances)
   private[this] lazy val cluster = new ParrotClusterImpl(Some(config))
@@ -117,7 +101,12 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     // Must call this before blocking below
     cluster.connectParrots()
 
-	allServers.await(1, TimeUnit.MINUTES)
+    // This gives our server(s) a chance to start up by waiting on a latch the Poller manages.
+    // This technically could have a bug -- if a server were to start up and then disappear,
+    // the latch would still potentially tick down in the poller, and we'd end up with
+    // fewer servers than expected. The code further down will cover that condition.
+    log.info("Awaiting %d servers to stand up and be recognized.", config.numInstances)
+    allServers.await(5, TimeUnit.MINUTES)
 
     if (cluster.runningParrots.isEmpty) {
       log.error("Empty Parrots list! Is Parrot running somewhere?")
@@ -157,18 +146,19 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
       parrots foreach { parrot =>
 
         if (!initialized(parrot)) {
-          println("initialized parrot")
           initialize(parrot)
         }
-
-        val batch = readBatch(linesToRead)
-        if (batch.size > 0) {
-
-          writeBatch(parrot, batch)
-
-          if (config.maxRequests - requestsRead.get <= 0) {
-            isShutdown.set(true)
+        parrot.synchronized {
+          if(parrot.hasCapacity) {
+            queueBatch(parrot, readBatch(linesToRead))
           }
+          else {
+            log.trace("parrot[%s:%d] queue is over capacity", parrot.host, parrot.port)
+          }
+        }
+
+        if (config.maxRequests - requestsRead.get <= 0) {
+          isShutdown.set(true)
         }
 
         if(!lines.hasNext) {
@@ -194,8 +184,8 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   }
 
   private[this] def initialize(parrot: RemoteParrot) {
-    parrot.targetDepth = 60 * config.requestRate
-    parrot.createJob(parrotJob)
+    parrot.targetDepth = config.cachedSeconds * config.requestRate
+    parrot.setRate(config.requestRate)
     parrot.createConsumer()
     initializedParrots += parrot
   }
@@ -218,9 +208,12 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     result.toList
   }
 
-  private[this] def writeBatch(parrot: RemoteParrot, batch: List[String]) {
-    if (!isShutdown.get) {
-      log.debug("Queuing batch for %s:%d with %d requests", parrot.host, parrot.port, batch.size)
+  private[this] def queueBatch(parrot: RemoteParrot, batch: List[String]) {
+    if (!isShutdown.get && batch.size > 0) {
+      log.debug("Queuing batch for %s:%d with %d requests",
+        parrot.host,
+        parrot.port,
+        batch.size)
       parrot.addRequest(batch)
     }
   }
@@ -264,15 +257,6 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     while((requestsRead.get != totalProcessed || queueDepth > 0) && counter < maxIterations) {
       Thread.sleep(config.pollInterval.inMilliseconds)
       counter = counter + 1
-    }
-  }
-
-  private[this] def createVictims(): List[TargetHost] = {
-    config.victimTargets match {
-      case Some(victims: List[_]) => victims
-      case _ => config.victimHosts map { host =>
-        new TargetHost(config.victimScheme, host, config.victimPort)
-      }
     }
   }
 }

@@ -15,7 +15,7 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import com.twitter.finagle.kestrel.protocol.{Command, Get, Kestrel, Response, Set}
+import com.twitter.finagle.kestrel.protocol._
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util.{Duration, Time}
 import java.util.concurrent.TimeUnit
@@ -40,28 +40,33 @@ object KestrelCommandExtractor extends MemcacheLikeCommandExtractor[Command] {
     }
   }
 
-  private def get(args: Array[String]): Option[Get] =
-    if (args.length != 1) {
+  private def get(rawArgs: Array[String]): Option[GetCommand] = {
+    if (rawArgs.length != 1) {
       None
     } else {
-      val keyArgs = args(0).split("/", 2)
-      val key = ChannelBuffers.wrappedBuffer(keyArgs(0).getBytes)
-      if (keyArgs.length > 2) {
-        None
-      } else if (keyArgs.length == 2) {
-        val timeoutSpec = keyArgs(1)
-        if (timeoutSpec.startsWith("t=")) {
-          val timeout = Duration(timeoutSpec.substring(2).toLong, TimeUnit.MILLISECONDS)
-          Some(Get(key, Some(timeout)))
-        } else {
-          None
-        }
-      } else {
-        Some(Get(key, None))
+      val queueAndArgs = rawArgs(0).split("/")
+      val queueName = ChannelBuffers.wrappedBuffer(queueAndArgs.head.getBytes)
+      val args = queueAndArgs.tail
+
+      val (timeouts, flags) = args.partition { _.startsWith("t=") }
+      val timeout = timeouts.headOption.map { timeoutSpec =>
+        Duration(timeoutSpec.substring(2).toLong, TimeUnit.MILLISECONDS)
+      }
+
+      flags.toSeq.map { _.toLowerCase } match {
+        case Seq()                => Some(Get(queueName, timeout))
+        case Seq("close", "open") => Some(CloseAndOpen(queueName, timeout))
+        case Seq("open", "close") => Some(CloseAndOpen(queueName, timeout))
+        case Seq("abort") =>         Some(Abort(queueName))
+        case Seq("close") =>         Some(Close(queueName))
+        case Seq("open") =>          Some(Open(queueName, timeout))
+        case Seq("peek") =>          Some(Peek(queueName, timeout))
+        case _ =>                    None
       }
     }
+  }
 
-  private def set(args: Array[String], data: Option[String]): Option[Set] =
+  private def set(args: Array[String], data: Option[String]): Option[Set] = {
     if (args.length < 4) {
       None
     } else {
@@ -76,10 +81,11 @@ object KestrelCommandExtractor extends MemcacheLikeCommandExtractor[Command] {
         Some(Set(key, expiry, ChannelBuffers.wrappedBuffer(bytes)))
       }
     }
+  }
 }
 
 
-class KestrelTransport(config: Option[ParrotServerConfig[ParrotRequest, Response]] = None)
+class KestrelTransport(config: ParrotServerConfig[ParrotRequest, Response])
 extends MemcacheLikeTransport[Command, ParrotRequest, Response](KestrelCommandExtractor, config)
 {
   override def codec() = Kestrel()

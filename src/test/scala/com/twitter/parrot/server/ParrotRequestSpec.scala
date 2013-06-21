@@ -15,26 +15,28 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import com.twitter.parrot.thrift.TargetHost
-import org.specs.SpecificationWithJUnit
+import org.junit.runner.RunWith
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
 
-class ParrotRequestSpec extends SpecificationWithJUnit {
-  val target = new TargetHost("http", "foo", 1234)
+@RunWith(classOf[JUnitRunner])
+class ParrotRequestSpec extends WordSpec with MustMatchers {
 
   "ParrotRequest.headers" should {
     "no headers, no host header" in {
-      new ParrotRequest(target).headers mustEqual Nil
+      new ParrotRequest().headers must be(Nil)
     }
     "no headers, host header" in {
-      new ParrotRequest(target, Some("bar" -> 2345)).headers mustEqual Seq("Host" -> "bar:2345")
+      new ParrotRequest(Some("bar" -> 2345)).headers must be === Seq("Host" -> "bar:2345")
     }
     "headers, no host header" in {
       val headers = Seq("foo" -> "bar", "baz" -> "blarg")
-      new ParrotRequest(target, None, headers).headers mustEqual headers
+      new ParrotRequest(None, headers).headers must be === headers
     }
     "headers, host header" in {
-      val request = new ParrotRequest(target, Some("bar" -> 2345), Seq("foo" -> "bar"))
-      request.headers mustEqual Seq("Host" -> "bar:2345", "foo" -> "bar")
+      val request = new ParrotRequest(Some("bar" -> 2345), Seq("foo" -> "bar"))
+      request.headers must be === Seq("Host" -> "bar:2345", "foo" -> "bar")
     }
   }
 }

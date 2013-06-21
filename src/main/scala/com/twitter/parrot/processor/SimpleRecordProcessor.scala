@@ -15,13 +15,16 @@ limitations under the License.
 */
 package com.twitter.parrot.processor
 
+import org.jboss.netty.handler.codec.http.HttpResponse
+
+import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.server.{ParrotRequest, ParrotService}
-import com.twitter.parrot.thrift.ParrotJob
+import com.twitter.parrot.server.ParrotRequest
+import com.twitter.parrot.server.ParrotService
 import com.twitter.parrot.util.UriParser
-import com.twitter.util.{Return, Throw}
-import org.jboss.netty.handler.codec.http.HttpResponse
+import com.twitter.util.Return
+import com.twitter.util.Throw
 
 /**
  * This processor just takes a line-separated list of URIs and turns them into requests, for instance:
@@ -30,25 +33,33 @@ import org.jboss.netty.handler.codec.http.HttpResponse
  * Empty lines and lines starting with '#' will be ignored.
  */
 class SimpleRecordProcessor(service: ParrotService[ParrotRequest, HttpResponse],
-                            config: ParrotServerConfig[ParrotRequest, HttpResponse])
+  config: ParrotServerConfig[ParrotRequest, HttpResponse])
   extends RecordProcessor {
+  private[this] val log = Logger.get(getClass)
+  private[this] var exceptionCount = 0
+  private[this] val hostHeader = Some((config.httpHostHeader, config.httpHostHeaderPort))
 
-  def processLines(job: ParrotJob, lines: Seq[String]) {
-    lines flatMap { line =>
-      val target = job.victims.get(config.randomizer.nextInt(job.victims.size))
+  def processLines(lines: Seq[String]) {
+    log.trace("SimpleRecordProcessor.processLines: processing %d lines", lines.size)
+    for (line <- lines) {
+      val p = UriParser(line)
+      log.trace("SimpleRecordProcessor.processLines: line is %s", line)
       UriParser(line) match {
         case Return(uri) =>
-          if (!uri.path.isEmpty && !line.startsWith("#")) {
-            val request = new ParrotRequest(target, None, Nil, uri, line)
-            Some(service(request))
-          }
-          else
-            None
+          if (!uri.path.isEmpty && !line.startsWith("#"))
+            service(new ParrotRequest(hostHeader, Nil, uri, line))
         case Throw(t) =>
+          if (exceptionCount < 3)
+            log.warning("exception\n\t%s\nwhile processing line\n\t%s", t.getMessage(), line)
+          else if (exceptionCount == 3) log.warning("more exceptions ...")
+          exceptionCount += 1
           Stats.incr("bad_lines")
           Stats.incr("bad_lines/" + t.getClass.getName)
-          None
       }
     }
+  }
+
+  override def shutdown() {
+    log.trace("SimpleRecordProcessor.shutdown: shutting down")
   }
 }

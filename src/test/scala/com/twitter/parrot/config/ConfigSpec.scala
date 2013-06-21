@@ -15,17 +15,21 @@ limitations under the License.
 */
 package com.twitter.parrot.config
 
+import org.junit.runner.RunWith
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+
 import com.twitter.io.TempFile
 import com.twitter.util.Eval
-import org.specs.SpecificationWithJUnit
 
-class ConfigSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class ConfigSpec extends WordSpec with MustMatchers {
   "/config" should {
     val eval = new Eval
     val configFiles = Seq(
       "/dev-feeder.scala",
       "/test-server.scala",
-      "/test-compare.scala",
       "/test-server.scala",
       "/test-slow.scala",
       "/test-ssl.scala",
@@ -33,17 +37,16 @@ class ConfigSpec extends SpecificationWithJUnit {
       "/test-memcache.scala",
       "/test-udp.scala",
       "/test-kestrel.scala",
-      "/test-thrift.scala"
-    ).map { TempFile.fromResourcePath(_) }
+      "/test-thrift.scala").map { TempFile.fromResourcePath(_) }
 
     for (file <- configFiles) {
       file.getName() in {
         try {
           val config = eval[ParrotCommonConfig](file)
-          config must notBeNull
-        }
-        catch {
+          config must not be null
+        } catch {
           case t: Throwable => {
+            Console.err.println("Error while loading %s".format(file.getName()))
             t.printStackTrace()
           }
         }

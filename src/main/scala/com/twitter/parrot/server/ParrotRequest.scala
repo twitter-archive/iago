@@ -16,26 +16,25 @@ limitations under the License.
 package com.twitter.parrot.server
 
 import com.twitter.finagle.thrift.ThriftClientRequest
-import com.twitter.parrot.thrift.TargetHost
 import com.twitter.parrot.util.Uri
 import com.twitter.util.Promise
 
-// @deprecated("Replace use of ParrotRequest with parameterized type Req")
 class ParrotRequest(
-    val target: TargetHost,
-    val hostHeader: Option[(String, Int)] = None,
-    val rawHeaders: Seq[(String, String)] = Nil,
-    val uri: Uri = Uri("/", Nil),
-    val rawLine: String = "",
-    val timestamp: Option[Long] = None,
-    val message: ThriftClientRequest = new ThriftClientRequest(Array(), false),
-    var response: Promise[_] = new Promise(),
-    val cookies: Seq[(String, String)] = Seq(),
-    val method: String = "GET",
-    val body: String = "") {
-
-    val headers: Seq[(String, String)] =
-      hostHeader.toSeq.map { case (host, port) =>
+  val hostHeader: Option[(String, Int)] = None,
+  val rawHeaders: Seq[(String, String)] = Nil,
+  val uri: Uri = Uri("/", Nil),
+  val rawLine: String = "",
+  val timestamp: Option[Long] = None,
+  val message: ThriftClientRequest = new ThriftClientRequest(Array(), false),
+  var response: Promise[_] = new Promise(),
+  val cookies: Seq[(String, String)] = Seq(),
+  val method: String = "GET",
+  val body: String = "",
+  val weight: Int = 1
+  ) {
+  val headers: Seq[(String, String)] =
+    hostHeader.toSeq.map {
+      case (host, port) =>
         ("Host", host + ":" + port.toString)
     } ++ rawHeaders
 }

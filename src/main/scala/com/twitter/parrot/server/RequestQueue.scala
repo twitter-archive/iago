@@ -19,57 +19,38 @@ import com.twitter.finagle.thrift.ThriftClientRequest
 import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.thrift.ParrotJob
 import com.twitter.util._
 import java.net.ConnectException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 
 class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Rep]) {
+
   private[this] val log = Logger.get(getClass)
-  private[this] val jobs = new mutable.HashMap[ParrotJob, RequestConsumer[Req]]()
   private[this] val running = new AtomicBoolean(false)
+  private[this] val consumer = new RequestConsumer[Req](config)
 
   private[this] lazy val transport = config.transport.getOrElse(throw new Exception("Unconfigured transport"))
 
-  def addRequest(job: ParrotJob, request: Req, response: Future[_]) {
-    if (jobs.get(job) == None) {
-      addJob(job)
-    }
-    jobs.get(job).foreach( _.offer(request) )
-  }
-
-  def addRequest(job: ParrotJob, req: Req): Promise[Rep] = {
+  def addRequest(request: Req): Future[Rep] = {    
     val response = new Promise[Rep]()
-    req.response = response
-    addRequest(job, req, response)
+    request.response = response
+    consumer.offer(request)
     response
   }
-
-  private[this] def addJob(job: ParrotJob) {
-    val consumer = new RequestConsumer[Req](config, job)
-    jobs.put(job, consumer)
-    if (running.get) {
-      consumer.start()
-    }
-  }
-
+  
   def pause() {
     running.set(false)
-    jobs.values.foreach( _.pause() )
+    consumer.pause()
   }
 
   def resume() {
     running.set(true)
-    jobs.values.foreach( _.start() )
+    consumer.continue()
   }
 
-  def jobChanged(job: ParrotJob) {
-    log.debug("jobChanged called on RequestQueue")
-    jobs.get(job) foreach {
-      log.debug("Calling jobChanged on job")
-      _.jobChanged(job)
-    }
+  def setRate(newRate: Int) {
+    consumer.setRate(newRate)
   }
 
   def start() {
@@ -92,15 +73,16 @@ class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Re
         }
       }
     }
+    consumer.start
   }
 
-  def queueDepth = jobs.values.foldLeft(0.0)(_+_.size)
-  def totalProcessed = jobs.values.foldLeft(0)(_+_.totalProcessed)
-  def clockError = jobs.values.foldLeft(0.0)(_+_.clockError)
+  def queueDepth = consumer.size
+  def totalProcessed = consumer.totalProcessed
+  def clockError = consumer.clockError
 
   def shutdown() {
-
     running.set(false)
-    jobs.values.foreach( _.pause() )
+    consumer.shutdown
+    log.trace("RequestQueue: shutdown")
   }
 }

@@ -17,18 +17,15 @@ package com.twitter.parrot.feeder
 
 import com.twitter.ostrich.admin.RuntimeEnvironment
 import com.twitter.logging.Logger
-import com.twitter.util.Eval
-import com.twitter.parrot.config.ParrotFeederConfig
-import java.io.File
 
 object FeederMain {
   val log = Logger.get(getClass.getName)
 
   def main(args: Array[String]) {
+    val runtime = RuntimeEnvironment(this, args)
+    val feeder: ParrotFeeder = runtime.loadRuntimeConfig()
+    log.info("Starting Parrot Feeder...")
     try {
-      val runtime = RuntimeEnvironment(this, args)
-	  log.info("Starting Parrot Feeder...")
-	  val feeder: ParrotFeeder = runtime.loadRuntimeConfig()
       feeder.start()
     } catch {
       case t: Throwable =>

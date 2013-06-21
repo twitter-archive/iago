@@ -16,7 +16,6 @@ limitations under the License.
 package com.twitter.parrot.launcher
 
 import java.io.File
-
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotLauncherConfig
 import com.twitter.util.Eval
@@ -30,18 +29,21 @@ object LauncherMain {
   private[this] var filename = ""
 
   def main(args: Array[String]) {
-    val eval = new Eval()
-    val config = findConfig(args) map { eval[ParrotLauncherConfig](_) }
-    val launcher = config map { _.apply() }
     try {
+      val eval = new Eval()
+      val config = findConfig(args) map { eval[ParrotLauncherConfig](_) }
+      val launcher = config map { _.apply() }
       launcher map {
-        if (killJob) _.kill()
+        if (killJob) _.kill
         else if (adjustJob) _.adjust(adjustment)
         else _.start()
       }
-    }
-    catch {
-      case t: Throwable => log.error(t, "Unexpected exception: %s", t)
+    } catch {
+      case e: Exception if("Quitting" == e.getMessage()) =>
+        // nothing!
+      case t: Throwable =>
+        log.fatal(t, "%s", t)
+        System.exit(1)
     }
   }
 
@@ -51,17 +53,21 @@ object LauncherMain {
     if (file.exists && file.isFile) Some(file)
     else {
       log.error("Couldn't find config file: %s", filename)
-      None
+      throw new Exception("Launcher creation failed. Couldn't find configuration file %s".format(filename))
+      // None
     }
   }
 
   private[this] def parseArgs(args: List[String]) {
     args match {
-      case "-f" :: name :: xs => filename = name; parseArgs(xs)
-      case "-k" :: xs => killJob = true; parseArgs(xs)
-      case "-a" :: change :: xs => adjustJob = true; adjustment = change; parseArgs(xs)
-      case _ :: xs => parseArgs(xs)
-      case Nil =>
+      case "-f" :: name :: xs   =>
+        filename = name; parseArgs(xs)
+      case "-k" :: xs           =>
+        killJob = true; parseArgs(xs)
+      case "-a" :: change :: xs =>
+        adjustJob = true; adjustment = change; parseArgs(xs)
+      case _ :: xs              => parseArgs(xs)
+      case Nil                  =>
     }
   }
 }

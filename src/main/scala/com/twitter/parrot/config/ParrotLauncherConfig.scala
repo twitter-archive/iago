@@ -16,17 +16,20 @@ limitations under the License.
 package com.twitter.parrot.config
 
 import com.twitter.logging.LoggerFactory
-import com.twitter.parrot.launcher.{CommandRunner, ParrotLauncher}
+import com.twitter.parrot.launcher.{ CommandRunner, ParrotLauncher }
 import com.twitter.util.Config
+import com.twitter.logging.Level
 
 trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfig {
-  var loggers: List[LoggerFactory] = Nil
   var batchSize = 1000
   var customLogSource = "" // Raw scala can be inserted in here and will end up in the Feeder config
+  var configType = "ParrotServerConfig"
   var distDir = "."
   var doConfirm = true
   var doOAuth = true
   var duration = 5
+  var env = "devel"	// the mesos environment
+  var feederDiskInMb: Long = 60
   var header = ""
   var hostConnectionCoresize = 1
   var hostConnectionIdleTimeInMs = 60000 // 1m
@@ -38,27 +41,48 @@ trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfi
   var log = required[String]
   var maxPerHost = 1
   var maxRequests = 1000
+  var mesosRamInMb: Option[Int] = None
   var numCpus = 1.0
   var numFeederInstances = 1
   var numInstances = 1
-  var parser = "http"
-  var port = required[Int]
+  var requestTimeoutInMs = Integer.MAX_VALUE
   var requestRate = 1
   var reuseConnections = true
   var reuseFile = true
   var role = ""
   var scheme = "http"
+  var serverDiskInMb = 60
   var serverXmx = 4000
-  var suppressUrlMap = true
+  var tcpConnectTimeoutInMs = Integer.MAX_VALUE
   var thriftClientId = ""
   var timeUnit = "MINUTES"
+  var traceLevel: Level = Level.INFO
   var verboseCmd = false
-  var victims = required[String]
 
+  // victims. When victimClusterType is "static", we set victims and
+  // port. victims can be a single host name, a host:port pair, or a
+  // list of host:port pairs separated with commas or spaces. The port
+  // is used for two things: to provide a port if none were specified in
+  // victims, and to provide a port for the host header using a
+  // FinagleTransport. Note that ParrotUdpTransport can only handle a
+  // single host:port pair.
+
+  var victimClusterType = "static"
+
+  var victims = required[String]
+  var port = 80
+
+  // When victimClusterType is "sdzk", the victim is considered to be a
+  // server set, referenced with victims, victimZk, and victimZkPort. An
+  // example victims in this case would be
+  // "/twitter/service/devprod/devel/echo"
+
+  var victimZk = "sdzookeeper.local.twitter.com"
+  var victimZkPort = 2181
 
   // Extension points
   var imports =
-"""import org.jboss.netty.handler.codec.http.HttpResponse
+    """import org.jboss.netty.handler.codec.http.HttpResponse
 import com.twitter.parrot.util.LoadTestStub
   """
   var requestType = "ParrotRequest"
@@ -70,19 +94,40 @@ import com.twitter.parrot.util.LoadTestStub
   // see also imports, must create a subclass of RequestDistribution
   var createDistribution = ""
 
+  // these variables are data-center specific
+  var hadoopNS = "hdfs://hadoop-nn.smf1.twitter.com"
+  var hadoopConfig = "/etc/hadoop/hadoop-conf-smf1"
+  var mesosCluster = "smf1"
+  zkHostName = Some("zookeeper.smf1.twitter.com")
+  
+  var proxy: Option[String] = Some("nest2.corp.twitter.com")
+
   // Override these at your own risk
   val parrotTasks = List("server", "feeder")
+  val parrotLogsDir = "/mesos/pkg/parrot/logs"
+  val proxyShell = "ssh -o ForwardX11=no"
+  val proxyCp = "scp"
+  val proxyMkdir = "mkdir -p"
+  val hadoopFS = "fs"
+  val hadoopCmd = "hadoop"
+
+  zkPort = 2181
+  zkNode = "/twitter/service/parrot2/%s"
 
   def apply() = {
     val missing = missingValues
     if (missing.isEmpty) {
       CommandRunner.setVerbose(verboseCmd)
       new ParrotLauncher(this)
-    }
-    else {
-      missing foreach {config: String => println("Config parameter missing: " + config) }
+    } else {
+      missing foreach { config: String => println("Config parameter missing: " + config) }
       throw new Exception("Launcher creation failed with unspecified required configs")
     }
   }
 
+  // You should probably override this. It is the command for making an
+  // archive of your parrot application. The default copies too much in
+  // general.
+  def archiveCommand(name: String) =
+    "jar Mcf %s.zip -C %s .".format(name, distDir)
 }

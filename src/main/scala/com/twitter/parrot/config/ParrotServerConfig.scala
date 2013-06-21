@@ -15,21 +15,69 @@ limitations under the License.
 */
 package com.twitter.parrot.config
 
-import com.twitter.conversions.time._
-import com.twitter.logging.{Logger, LoggerFactory}
-import com.twitter.ostrich.admin._
-import com.twitter.parrot.processor._
-import com.twitter.parrot.server._
-import com.twitter.parrot.thrift.TargetHost
-import com.twitter.parrot.util.{PoissonProcess, RequestDistribution, ParrotCluster}
-import com.twitter.util.{Duration, Config}
-import org.jboss.netty.handler.codec.http.HttpResponse
+import java.net.InetAddress
+import java.net.InetSocketAddress
+
+import scala.collection.JavaConverters.asJavaIterableConverter
+
+import com.twitter.common.quantity.Amount
+import com.twitter.common.quantity.Time
+import com.twitter.common.zookeeper.ServerSetImpl
+import com.twitter.common.zookeeper.ZooKeeperClient
+import com.twitter.conversions.time.intToTimeableNumber
+import com.twitter.finagle.zookeeper.ZookeeperServerSetCluster
+import com.twitter.logging.Logger
+import com.twitter.ostrich.admin.AdminServiceFactory
+import com.twitter.ostrich.admin.JsonStatsLoggerFactory
+import com.twitter.ostrich.admin.RuntimeEnvironment
+import com.twitter.ostrich.admin.Service
+import com.twitter.ostrich.admin.ServiceTracker
+import com.twitter.ostrich.admin.StatsFactory
+import com.twitter.ostrich.admin.TimeSeriesCollectorFactory
+import com.twitter.parrot.processor.RecordProcessor
+import com.twitter.parrot.server.ParrotRequest
+import com.twitter.parrot.server.ParrotServerImpl
+import com.twitter.parrot.server.ParrotTransport
+import com.twitter.parrot.server.RequestQueue
+import com.twitter.parrot.server.ThriftServer
+import com.twitter.parrot.util.ParrotCluster
+import com.twitter.parrot.util.PoissonProcess
+import com.twitter.parrot.util.RequestDistribution
+import com.twitter.util.Config
 
 trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnvironment => Service]
   with ParrotCommonConfig
-  with CommonParserConfig
-{
-  var loggers: List[LoggerFactory] = Nil
+  with CommonParserConfig {
+
+  sealed abstract class Victim
+
+  /**
+   * @param hostnamePortCombinations is of the form "foo:49,bar:55". You can uses spaces instead of
+   * commas.
+   */
+  case class HostPortListVictim(hostnamePortCombinations: String) extends Victim
+
+  case class ServerSetVictim(cluster: ZookeeperServerSetCluster) extends Victim
+
+  object ServerSetVictim {
+    def apply(path: String, zk: String = "sdzookeeper.local.twitter.com", zkPort: Int = 2181): ServerSetVictim = {
+      val zookeeperClient = new ZooKeeperClient(Amount.of(1, Time.SECONDS),
+        Seq(InetSocketAddress.createUnresolved(zk, zkPort)).asJava)
+      val serverSet = new ServerSetImpl(zookeeperClient, path)
+      ServerSetVictim(new ZookeeperServerSetCluster(serverSet))
+    }
+  }
+
+  var victim = required[Victim]
+
+  object TransportScheme extends Enumeration {
+    val HTTPS = Value("https")
+    val HTTP = Value("http")
+    val THRIFTS = Value("thrifts")
+  }
+  
+  var transportScheme = TransportScheme.HTTP
+
   var thriftServer: Option[ThriftServer] = None
   var clusterService: Option[ParrotCluster] = None
   var transport: Option[ParrotTransport[Req, Rep]] = None
@@ -37,11 +85,12 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
 
   var maxJobs = 100 // How many jobs can we have running simultaneously?
 
-  var statsName = "parrot"
+  var statsName = "parrot-server"
   var thriftName = "parrot"
   var minThriftThreads = 10
   var httpPort = 9994
-  var httpHostHeader: Option[String] = None
+  var httpHostHeader = "api.twitter.com"
+  var httpHostHeaderPort = 80
 
   var numWorkers = 5
 
@@ -63,9 +112,6 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   var reuseConnections = true
   var thriftClientId = ""
 
-  // compare mode off by setting this to None
-  var baseline: Option[TargetHost] = None
-
   var slopTimeInMs = 0L
   var thinkTime = 0L
   var replayTimeCheck = false
@@ -76,6 +122,8 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   //  Parrot as a library support hooks
   var loadTestName = "thrift"
   var loadTestInstance: Option[RecordProcessor] = None
+
+  def recordProcessor: RecordProcessor = loadTestInstance.get
 
   lazy val service = transport.map { _.createService(this) }
 
@@ -89,22 +137,16 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
 
     val adminPort = runtime.arguments.get("httpPort").map(_.toInt).getOrElse(httpPort)
     parrotPort = runtime.arguments.getOrElse("thriftPort", parrotPort.toString).toInt
+    this.runtime = runtime
 
-    var admin = new AdminServiceFactory (
+    var admin = new AdminServiceFactory(
       adminPort,
       statsNodes = new StatsFactory(
         reporters = new JsonStatsLoggerFactory(
           period = 1.minute,
-          serviceName = Some(statsName)
-        ) :: new TimeSeriesCollectorFactory()
-      )
-    )(runtime)
+          serviceName = statsName) :: new TimeSeriesCollectorFactory()))(runtime)
 
     val server = new ParrotServerImpl(this)
-
-    // Processor registration
-    service.map { svc => svc.registerDefaultProcessors() }
-    loadTestInstance foreach { RecordProcessorFactory.registerProcessor(loadTestName, _) }
 
     val result = new Service() {
       def start() { server.start }

@@ -15,10 +15,9 @@ limitations under the License.
 */
 package com.twitter.parrot.processor
 
-import collection.JavaConversions._
+import collection.JavaConverters._
 import com.twitter.ostrich.stats.Stats
 import com.twitter.parrot.server.ParrotRequest
-import com.twitter.parrot.thrift.{ParrotJob, TargetHost}
 import com.twitter.parrot.util.Uri
 import java.util.{List => JList}
 
@@ -32,9 +31,9 @@ trait Record {
  * parses lines into records, which are mapped to results
  */
 trait RecordParser[Res] {
-  def apply(job: ParrotJob, lines: JList[String]): JList[Res] = this(job, lines.toSeq).toList
+  def apply(lines: JList[String]): JList[Res] = this(lines.asScala).asJava
 
-  def apply(job: ParrotJob, lines: Seq[String]): Seq[Res]
+  def apply(lines: Seq[String]): Seq[Res]
 
   def splitWords(l: String): Array[String] = l.toString.trim.split("[ \\t]+")
 }

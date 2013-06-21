@@ -15,15 +15,17 @@ limitations under the License.
 */
 package com.twitter.parrot.feeder
 
-import org.specs.SpecificationWithJUnit
-import com.twitter.parrot.server.ParrotServer
-import java.util.{List => JList}
-import com.twitter.parrot.thrift.{ParrotStatus, ParrotJobRef, ParrotJob}
-import com.twitter.util.Eval
+import org.junit.runner.RunWith
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+
 import com.twitter.io.TempFile
 import com.twitter.parrot.config.ParrotFeederConfig
+import com.twitter.util.Eval
 
-class ParrotFeederSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class ParrotFeederSpec extends WordSpec with MustMatchers  {
   val config = {
     val eval = new Eval
     val configFile = TempFile.fromResourcePath("/test-feeder.scala")

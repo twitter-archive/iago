@@ -9,18 +9,10 @@ import org.jboss.netty.handler.codec.string.{StringDecoder, StringEncoder}
 import org.jboss.netty.util.CharsetUtil
 
 new ParrotServerConfig[ParrotRequest, String] {
-  loggers = new LoggerFactory(
-    level = Level.DEBUG,
-    handlers = new ConsoleHandlerConfig()
-  )
+  com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)
 
   httpPort = RandomSocket().getPort
 
   thriftServer = None
   clusterService = Some(new LocalCluster)
-  transport = Some(new ParrotUdpTransport[ParrotRequest, String] {
-    val requestEncoder = Some(new StringEncoder(CharsetUtil.UTF_8))
-    val responseDecoder = Some(new StringDecoder(CharsetUtil.UTF_8))
-  })
-  queue = new RequestQueue(this)
 }

@@ -17,6 +17,8 @@ package com.twitter.parrot.config
 
 import com.twitter.util.Duration
 import java.util.concurrent.TimeUnit
+import com.twitter.logging.LoggerFactory
+import com.twitter.ostrich.admin.RuntimeEnvironment
 
 trait ParrotCommonConfig {
   var zkHostName: Option[String] = None
@@ -26,5 +28,12 @@ trait ParrotCommonConfig {
   var parrotPort = 9999
   var parrotHosts = List("localhost")
   var finagleTimeout = Duration(5, TimeUnit.SECONDS)
+
+  var classPath="${APP_HOME}/*:${APP_HOME}/libs/*"
+
+  var loggers: List[LoggerFactory] = Nil
+  var runtime: Option[RuntimeEnvironment] = None
+  
+  var cachedSeconds = 60
 
 }

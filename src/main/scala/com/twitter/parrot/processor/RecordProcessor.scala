@@ -15,14 +15,12 @@ limitations under the License.
 */
 package com.twitter.parrot.processor
 
-import collection.JavaConversions._
+import collection.JavaConverters._
 import com.twitter.parrot.server.{ParrotRequest, ParrotService, ParrotThriftServiceWrapper}
-import com.twitter.parrot.thrift.ParrotJob
 
 trait RecordProcessor {
-  def start(job: ParrotJob): Unit = { }
-  def processLines(job: ParrotJob, lines: Seq[String])
-  def changeJob(job: ParrotJob): Unit = { }
+  def start(): Unit = { }
+  def processLines(lines: Seq[String])
   def shutdown(): Unit = { }
 }
 
@@ -35,19 +33,19 @@ extends RecordProcessor {
  * This is here to support Java users of Parrot. Scala users should simply mixin the RecordProcessor trait
  */
 abstract class LoadTest extends RecordProcessor {
-  def processLines(job: ParrotJob, lines: java.util.List[String])
+  def processLines(lines: java.util.List[String])
 
-  def processLines(job: ParrotJob, lines: Seq[String]) {
-    val linesAsList: java.util.List[String] = lines
-    processLines(job, linesAsList)
+  def processLines(lines: Seq[String]) {
+    val linesAsList: java.util.List[String] = lines.asJava
+    processLines(linesAsList)
   }
 }
 
 abstract class ThriftLoadTest(pService: ParrotService[ParrotRequest, Array[Byte]]) extends ThriftRecordProcessor(pService) {
-  def processLines(job: ParrotJob, lines: java.util.List[String])
+  def processLines(lines: java.util.List[String])
 
-  def processLines(job: ParrotJob, lines: Seq[String]) {
-    val linesAsList: java.util.List[String] = lines
-    processLines(job, linesAsList)
+  def processLines(lines: Seq[String]) {
+    val linesAsList: java.util.List[String] = lines.asJava
+    processLines(linesAsList)
   }
 }

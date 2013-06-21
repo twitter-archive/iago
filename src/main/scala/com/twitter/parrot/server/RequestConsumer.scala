@@ -18,19 +18,20 @@ package com.twitter.parrot.server
 import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.thrift.ParrotJob
-import com.twitter.parrot.util.{RequestDistribution}
+import com.twitter.parrot.util.{ RequestDistribution }
 import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.atomic.{AtomicReference, AtomicBoolean}
+import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
 
-class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _], aJob: ParrotJob) extends Thread {
+class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _]) extends Thread {
+
   private[this] val log = Logger.get(getClass)
-  private[this] val transport = config.transport.getOrElse(throw new Exception("unspecified transport"))
-  private[this] val running = new AtomicBoolean(false)
   private[this] val queue = new LinkedBlockingQueue[Req]()
+  private[this] var rate: Int = 1
 
-  private[this] val process = new AtomicReference[RequestDistribution](config.createDistribution(aJob.getArrivalRate))
-  private[this] val job = new AtomicReference[ParrotJob](aJob)
+  def createDistribution = config.createDistribution(rate)
+
+  private[this] val process =
+    new AtomicReference[RequestDistribution](createDistribution)
 
   private[server] var totalClockError = 0L
 
@@ -41,42 +42,60 @@ class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _], 
   }
 
   override def start() {
-    this.setName(job.get.getName)
-    running.set(true)
     super.start()
   }
 
   override def run() {
-    while (running.get) {
-      val start = System.nanoTime()
+    log.trace("RequestConsumer: beginning run")
 
-      try {
-        Stats.incr("requests_sent")
-        transport.apply(
-          queue.take()
-        ).
-        respond {
-          _ => totalProcessed = totalProcessed + 1
+    /* The feeder goes at full speed until the queue is full, so
+       queue.take() takes a long time the first time, then takes no time
+       after that. If we were starting the timer BEFORE starting the
+       process of sending requests, we clock a "huge delay" (aka, time
+       from when we start the clock to when we do queue.take()). The
+       rate then tries to compensate for that, "rapid-firing" requests
+       until the "clock error" is back to 0. By starting the clock AFTER
+       we take our first request, we are getting rid of the false
+       initial delay.
+     */
+
+    try {
+      while (true) {
+        val request = queue.take()
+        val start = System.nanoTime()
+        try {
+          val transport = config.transport.getOrElse(throw new Exception("unspecified transport"))
+          val future = transport(request)
+          Stats.incr("requests_sent")
+          future.respond {
+            _ =>
+              totalProcessed += 1
+          }
+        } catch {
+          case t =>
+            log.error(t, "Exception sending request: %s", t)
         }
-
-      } catch { case t =>
-        log.error(t, "Exception sending request: %s", t)
+        if (rate > 0) {
+          val waitTime =
+            ((1 to request.weight).map { _ =>
+              process.get.timeToNextArrival().inNanoseconds
+            }).sum - totalClockError
+          totalClockError = 0L
+          waitForNextRequest(waitTime)
+          totalClockError += System.nanoTime() - start - waitTime
+        }
       }
-
-      if (job.get.getArrivalRate > 0) {
-        val waitTime = process.get.timeToNextArrival().inNanoseconds - totalClockError
-        totalClockError = 0L
-
-        waitForNextRequest(waitTime)
-
-        totalClockError += System.nanoTime() - start - waitTime
-      }
+    } catch {
+      case e: InterruptedException =>
     }
   }
 
   def pause() {
-    running.set(false)
-    this.interrupt()
+    suspend
+  }
+
+  def continue() {
+    resume
   }
 
   def size = {
@@ -87,11 +106,12 @@ class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _], 
     totalClockError
   }
 
-  def jobChanged(newJob: ParrotJob) {
-    log.debug("Job Changed event received for Job: %s", newJob.toString)
-    job.set(newJob)
-    process.set(config.createDistribution(job.get.getArrivalRate))
+  def setRate(newRate: Int) {
+    rate = newRate
+    process.set(createDistribution)
   }
+
+  def shutdown = interrupt
 
   private[this] def waitForNextRequest(waitTime: Long) {
     val millis = waitTime / 1000000L
@@ -100,11 +120,9 @@ class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _], 
     if (millis > 0) {
       Thread.sleep(millis)
       busyWait(remainder)
-    }
-    else if (waitTime < 0) {
+    } else if (waitTime < 0) {
       ()
-    }
-    else {
+    } else {
       busyWait(waitTime)
     }
   }

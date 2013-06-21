@@ -17,27 +17,13 @@ package com.twitter.parrot.server
 
 import com.twitter.finagle.Service
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.thrift.{ParrotJob, TargetHost}
 import com.twitter.util.Future
-import java.util.concurrent.atomic.AtomicReference
 
 class ParrotService[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Rep]) extends Service[Req, Rep] {
   lazy val queue = config.queue.getOrElse(throw new Exception("Unconfigured request queue"))
 
-  val jobRef = new AtomicReference[ParrotJob]()
-
   def apply(req: Req): Future[Rep] = {
-    queue.addRequest(jobRef.get, req)
+    queue.addRequest(req)
   }
 
-  def setJob(job: ParrotJob) {
-    jobRef.set(job)
-  }
-
-  def registerDefaultProcessors() { }
-
-  def chooseRandomVictim: TargetHost = {
-    val job = jobRef.get
-    job.victims.get(config.randomizer.nextInt(job.victims.size))
-  }
 }

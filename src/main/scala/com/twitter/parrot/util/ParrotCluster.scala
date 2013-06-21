@@ -15,30 +15,32 @@ limitations under the License.
 */
 package com.twitter.parrot.util
 
-import collection.JavaConversions._
+import collection.JavaConverters._
 import collection.mutable
 import com.google.common.collect.ImmutableSet
-import com.twitter.common.quantity.{Time, Amount}
+import com.twitter.common.quantity.{ Time, Amount }
 import com.twitter.common.net.pool.DynamicHostSet.HostChangeMonitor
-import com.twitter.common.zookeeper.{ServerSetImpl, ZooKeeperClient}
+import com.twitter.common.zookeeper.{ ServerSetImpl, ZooKeeperClient }
 import com.twitter.common.zookeeper.ServerSet.EndpointStatus
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotCommonConfig
 import com.twitter.parrot.thrift.ParrotServerService
-import com.twitter.thrift.{Endpoint, ServiceInstance, Status}
+import com.twitter.thrift.{ Endpoint, ServiceInstance, Status }
 import com.twitter.util.Duration
-import java.net.{InetAddress, InetSocketAddress}
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.net.{ InetAddress, InetSocketAddress }
+import java.util.concurrent.{ CountDownLatch, TimeUnit }
+import com.twitter.logging.Level
 
 class Discovery(zkHostName: Option[String], zkPort: Int, zkNode: String, providedClient: Option[ZooKeeperClient] = None) {
   val log = Logger.get(getClass.getName)
+
+  log.logLazy(Level.DEBUG, "Discovery: zkHostName = " + zkHostName + ", zkPort = " + zkPort + ", zkNode = " + zkNode);
 
   val zkCluster: Array[InetSocketAddress] = zkHostName match {
     case None => Array()
     case Some(host) => try {
       InetAddress.getAllByName(host).map(new InetSocketAddress(_, zkPort))
-    }
-    catch {
+    } catch {
       case t: Throwable => {
         log.error("Error getting Zookeeper address.", t)
         Array()
@@ -47,20 +49,19 @@ class Discovery(zkHostName: Option[String], zkPort: Int, zkNode: String, provide
   }
 
   private[this] lazy val zkClient = providedClient.getOrElse(
-    new ZooKeeperClient(Amount.of(1000, Time.MILLISECONDS), asJavaIterable(zkCluster.toIterable))
-  )
+    new ZooKeeperClient(Amount.of(1000, Time.MILLISECONDS), zkCluster.toIterable.asJava))
   private[this] lazy val zkServerSet = new ServerSetImpl(zkClient, zkNode)
   private[this] var zkStatus: Option[EndpointStatus] = None
 
-  def join(port: Int): Discovery = {
+  def join(port: Int, shardId: Int = 0): Discovery = {
     if (!connected) {
       return this
     }
     zkStatus = Some(zkServerSet.join(
       InetSocketAddress.createUnresolved(InetAddress.getLocalHost.getHostName, port),
-      Map[String, InetSocketAddress](),
-      Status.ALIVE))
-
+      Map[String, InetSocketAddress]() asJava,
+      shardId))
+    log.logLazy(Level.DEBUG, "zkStatus is " + zkStatus)
     this
   }
 
@@ -72,32 +73,30 @@ class Discovery(zkHostName: Option[String], zkPort: Int, zkNode: String, provide
   }
 
   def shutdown() {
-    if (zkStatus != None) zkStatus.get.update(Status.DEAD)
+    zkStatus map (_.leave())
     zkClient.close()
   }
 
   def pause() {
-    if (zkStatus != None) zkStatus.get.update(Status.STOPPING)
   }
 
   def resume() {
-    if (zkStatus != None) zkStatus.get.update(Status.ALIVE)
   }
 
   def connected: Boolean = {
     try {
+      log.logLazy(Level.DEBUG, "providedClient.isEmpty && zkCluster.isEmpty = " +
+        providedClient.isEmpty + " && " + zkCluster.isEmpty)
       // if a client was provided, we don't care about the zkCluster values.
       // Otherwise, we need to not call get on a lazy client, because ZKClient
       // complains if you give it an empty list of zk servers
       if (providedClient.isEmpty && zkCluster.isEmpty) {
         false
-      }
-      else {
-        zkClient.get(Amount.of(5, Time.SECONDS))
+      } else {
+        zkClient.get(Amount.of(10, Time.SECONDS))
         true
       }
-    }
-    catch {
+    } catch {
       case t: Throwable => {
         log.error(t, "Error connecting to Zookeeper: %s", t.getClass.getName)
         false
@@ -120,9 +119,8 @@ trait ParrotCluster {
  * This class does Zookeeper discovery and creates RemoteParrots to wire them up.
  */
 class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
-    extends HostChangeMonitor[ServiceInstance]
-    with ParrotCluster
-{
+  extends HostChangeMonitor[ServiceInstance]
+  with ParrotCluster {
   val log = Logger.get(getClass.getName)
   private[this] val members = new CountDownLatch(1)
   private[this] lazy val discovery = new Discovery(getConfig.zkHostName, getConfig.zkPort, getConfig.zkNode)
@@ -141,7 +139,7 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
     log.info("Connecting to Parrots")
     config.get.zkHostName match {
       case Some(_) => connectParrotsFromZookeeper(getConfig)
-      case None => connectParrotsFromConfig(getConfig)
+      case None    => connectParrotsFromConfig(getConfig)
     }
   }
 
@@ -155,15 +153,13 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
    * and scanning the large lists with an O(n2) algorithm would be poor.
    */
   private[this] def updateParrots(hostSet: ImmutableSet[ServiceInstance]) {
-    hostSet.foreach { instance =>
+    hostSet.asScala.foreach { instance =>
       val endpoint = instance.getServiceEndpoint
       if (instance.getStatus == Status.STOPPING && !isPaused(endpoint)) {
         pauseParrot(endpoint)
-      }
-      else if (instance.getStatus == Status.ALIVE && isPaused(endpoint)) {
+      } else if (instance.getStatus == Status.ALIVE && isPaused(endpoint)) {
         resumeParrot(endpoint)
-      }
-      else {
+      } else {
         updateParrotMembership(endpoint)
       }
     }
@@ -199,7 +195,7 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
   private[this] def isPaused(endpoint: Endpoint) = {
     val parrot = _pausedParrots.find(p => p.host == endpoint.host && p.port == endpoint.port)
     parrot match {
-      case None => false
+      case None         => false
       case Some(paused) => true
     }
   }
@@ -252,7 +248,7 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
     var result = List[RemoteParrot]()
 
     discovery.monitor(this)
-    waitForMembers(timeout=Duration(10000, TimeUnit.MILLISECONDS))
+    waitForMembers(timeout = Duration(10000, TimeUnit.MILLISECONDS))
 
     instances foreach { instance =>
       val endpoint = instance.getServiceEndpoint
@@ -262,8 +258,7 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
             log.info("Found a paused Parrot on startup: %s:%d", endpoint.host, endpoint.port)
             _pausedParrots += parrot
             result
-          }
-          else {
+          } else {
             parrot :: result
           }
         }
@@ -274,15 +269,13 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
   }
 
   private[this] def connectParrot(host: String, port: Int) = {
-    log.info("Connecting to server at %s:%d", host, port)
+    log.info("Connecting to parrot server at %s:%d", host, port)
 
     var result: Option[RemoteParrot] = None
     try {
       result = Some(
-        new RemoteParrot(host, new InternalCounter(), host, port, getConfig.finagleTimeout)
-      )
-    }
-    catch {
+        new RemoteParrot(host, new InternalCounter(), host, port, getConfig.finagleTimeout))
+    } catch {
       case t: Throwable =>
         log.error(t, "Error connecting to %s %d: %s", host, port, t.getMessage)
         t.printStackTrace
@@ -299,7 +292,7 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
   def onChange(hostSet: ImmutableSet[ServiceInstance]) {
     handleClusterEvent(hostSet)
     members.countDown()
-    instances = Set.empty ++ hostSet
+    instances = Set.empty ++ hostSet.asScala
   }
 
   /**
@@ -314,10 +307,14 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
   }
 
   def start(port: Int) {
-    config.get.zkHostName foreach { host => discovery.join(port) }
+    log.logLazy(Level.DEBUG, "starting ParrotClusterImpl")
+    config.get.zkHostName foreach { host => discovery.join(port, 
+        config.get.runtime.get.arguments.get("shardId").get.toInt)
+    }
   }
 
   def shutdown() {
+    log.logLazy(Level.DEBUG, "ParrotClusterImpl: shutting down")
     config.get.zkHostName foreach { host => discovery.shutdown() }
 
     val allParrots = parrots
@@ -326,11 +323,9 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
     allParrots foreach { parrot =>
       try {
         parrot.shutdown()
-        println("shut down parrot")
-      }
-      catch {
+        log.info("connection to parrot server %s successfully shut down".format(parrot.name))
+      } catch {
         case t: Throwable => log.error(t, "Error shutting down Parrot: %s", t.getClass.getName)
-          println(t, "Error shutting down Parrot: %s", t.getClass.getName)
       }
     }
   }

@@ -16,10 +16,10 @@ limitations under the License.
 package com.twitter.parrot.feeder
 
 import com.twitter.logging.Logger
-import com.twitter.parrot.thrift.{ParrotServerService, ParrotState, ParrotStatus}
+import com.twitter.parrot.thrift.{ ParrotServerService, ParrotState, ParrotStatus }
 import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TSocket
-import com.twitter.parrot.util.{ParrotCluster, RemoteParrot}
+import com.twitter.parrot.util.{ ParrotCluster, RemoteParrot }
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -51,7 +51,17 @@ class ParrotPoller(cluster: ParrotCluster, serverLatch: CountDownLatch) extends 
   }
 
   private[this] def pollParrots() {
-    cluster.parrots foreach { pollParrot(_) }
+    cluster.parrots foreach { parrot =>
+      try {
+        pollParrot(parrot)
+      } catch {
+        case t: Throwable =>
+          log.error("Exception polling parrot[%s:%d] - %s",
+            parrot.host,
+            parrot.port,
+            Option(t.getMessage).getOrElse(t.toString))
+      }
+    }
 
     // Note that cluster.parrots can change during execution of this block!
     val curParrots = cluster.parrots.size
@@ -70,8 +80,7 @@ class ParrotPoller(cluster: ParrotCluster, serverLatch: CountDownLatch) extends 
     val result = new ParrotServerService.Client(new TBinaryProtocol(new TSocket(host, port)))
     try {
       result.getInputProtocol.getTransport.open()
-    }
-    catch {
+    } catch {
       case t: Throwable => log.error(t, "Error connecting to %s %d: %s", host, port, t.getClass.getName)
     }
     result

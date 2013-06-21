@@ -15,18 +15,19 @@ limitations under the License.
 */
 package com.twitter.parrot.util
 
+import org.jboss.netty.handler.codec.http.HttpResponse
+
+import com.twitter.logging.Logger
 import com.twitter.parrot.processor.RecordProcessor
-import com.twitter.parrot.server.{ParrotService, ParrotRequest}
-import com.twitter.parrot.thrift.ParrotJob
-import org.jboss.netty.handler.codec.http._
-import util.Random
+import com.twitter.parrot.server.ParrotRequest
+import com.twitter.parrot.server.ParrotService
 
 class LoadTestStub(service: ParrotService[ParrotRequest, HttpResponse]) extends RecordProcessor {
-  val rnd = new Random(System.currentTimeMillis())
-  def processLines(job: ParrotJob, lines: Seq[String]) {
-    val target = job.victims.get(rnd.nextInt(job.victims.size))
+  val log = Logger.get(getClass.getName)
+  def processLines(lines: Seq[String]) {
     lines foreach { line =>
-      service(new ParrotRequest(target, rawLine = line))
+      log.debug("LoadTestStub: " + line)
+      service(new ParrotRequest(rawLine = line))
     }
   }
 }

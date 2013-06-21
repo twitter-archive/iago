@@ -76,7 +76,7 @@ object MemcacheCommandExtractor extends MemcacheLikeCommandExtractor[Command] {
 }
 
 
-class MemcacheTransport(config: Option[ParrotServerConfig[ParrotRequest, Response]] = None)
+class MemcacheTransport(config: ParrotServerConfig[ParrotRequest, Response])
 extends MemcacheLikeTransport[Command, ParrotRequest, Response](MemcacheCommandExtractor, config)
 {
   override def codec() = Memcached()

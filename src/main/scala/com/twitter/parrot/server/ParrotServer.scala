@@ -15,37 +15,31 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import collection.JavaConversions._
-import collection.mutable
+import java.io.File
+import java.io.FileReader
+import java.io.IOException
+import java.util.{ List => JList }
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.mutable
+import scala.xml.Elem
+import scala.xml.Node
 import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
-import com.twitter.ostrich.admin.ServiceTracker
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.processor.{RecordProcessor,RecordProcessorFactory}
-import com.twitter.parrot.thrift._
+import com.twitter.parrot.thrift.ParrotLog
+import com.twitter.parrot.thrift.ParrotServerService
+import com.twitter.parrot.thrift.ParrotState
+import com.twitter.parrot.thrift.ParrotStatus
 import com.twitter.util.Future
-import java.util.{List => JList}
-import java.util.concurrent.atomic.AtomicReference
-import xml.{Elem, Node}
+import com.twitter.ostrich.admin.ServiceTracker
 
 trait ParrotServer[Req <: ParrotRequest, Rep] extends ParrotServerService.ServiceIface {
   val config: ParrotServerConfig[Req, Rep]
-  def createJob(job: ParrotJob): Future[ParrotJobRef]
-  def adjustRateForJob(name: String, adjustment: Int): Future[Void]
-  def sendRequest(job: ParrotJobRef, lines: JList[String]): Future[ParrotStatus]
-  def getStatus: Future[ParrotStatus]
-  def start(): Future[Void]
-  def shutdown(): Future[Void]
-  def pause(): Future[Void]
-  def resume(): Future[Void]
-  def fetchThreadStacks(): Future[String]
 }
 
 class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig[Req, Rep])
-  extends ParrotServer[Req, Rep]
-{
+  extends ParrotServer[Req, Rep] {
   private[this] val log = Logger.get(getClass)
-  private[this] val jobRef = new AtomicReference[ParrotJob]()
   private[this] val status = new ParrotStatus().setStatus(ParrotState.UNKNOWN)
 
   private[this] lazy val thriftServer = config.thriftServer.getOrElse(throw new Exception("Unconfigured thrift service"))
@@ -60,61 +54,45 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     thriftServer.start(this, config.parrotPort)
     clusterService.start(config.parrotPort)
     status.setStatus(ParrotState.RUNNING)
+    log.info("using record processor %s", config.recordProcessor.getClass().getName())
     Future.Void
   }
 
   def shutdown(): Future[Void] = {
-    status.setStatus(ParrotState.STOPPING)
-    clusterService.shutdown()
-    queue.shutdown()
-    transport.shutdown()
-    status.setStatus(ParrotState.SHUTDOWN)
-    val job = jobRef.get()
-    if (job != null) {
-      RecordProcessorFactory.getProcessorForJob(job).shutdown()
-    }
-    ServiceTracker.shutdown()
-    thriftServer.shutdown()
-    Future.Void
-  }
-
-  def createJob(job: ParrotJob): Future[ParrotJobRef] = {
-    synchronized {
-      if (jobRef.get() == null) {
-        log.info("Creating job named %s", job.getName)
-        job.setCreated(System.currentTimeMillis)
-        jobRef.set(job)
-        RecordProcessorFactory.getProcessorForJob(job).start(job)
-        config.service foreach { _.setJob(job) }
-      }
-    }
-    Future.value(new ParrotJobRef(0))
-  }
-
-  def adjustRateForJob(name: String, adjustment: Int): Future[Void] = {
-    log.info("Adjusting rate for job %s by %d RPS", name, adjustment)
-    val job = jobRef.get()
-    if (job != null) {
-      log.debug("calling job changed")
-      job.arrivalRate += adjustment
-      queue.jobChanged(job)
-    }
-    else {
-      log.error("Got adjust for job %s but no createJob called yet", name)
+    
+    /* Calling ServiceTracker.shutdown() causes all the Ostrich threads to go away. It also results
+     * in all its managed services to be shutdown. That includes this service. We put a guard
+     * here so we don't end up calling ourselves twice.
+     */
+    
+    if (status.getStatus != ParrotState.SHUTDOWN) {
+      status.setStatus(ParrotState.STOPPING)
+      clusterService.shutdown()
+      queue.shutdown()
+      transport.shutdown()
+      status.setStatus(ParrotState.SHUTDOWN)
+      config.recordProcessor.shutdown()
+      ServiceTracker.shutdown()
+      thriftServer.shutdown()
     }
     Future.Void
   }
 
-  def sendRequest(pjr: ParrotJobRef, lines: JList[String]): Future[ParrotStatus] = {
-    if (pjr.getJobId > 0 || jobRef.get() == null) {
-      return Future.value(
-        new ParrotStatus().setStatus(ParrotState.UNKNOWN).setLinesProcessed(0))
-    }
-    val job = jobRef.get()
-    RecordProcessorFactory.getProcessorForJob(job).processLines(job, lines)
+  def setRate(newRate: Int): Future[Void] = {
+    log.info("setting rate %d RPS", newRate)
+    queue.setRate(newRate)
+    Future.Void
+  }
+
+  def sendRequest(lines: JList[String]): Future[ParrotStatus] = {
+    log.trace("sendRequest: calling process lines with %d lines", lines.size)
+    config.recordProcessor.processLines(lines.asScala)
+    log.trace("sendRequest: done calling process lines with %d lines", lines.size)
 
     Stats.incr("records-read", lines.size)
-    getStatus.map(status => status.setLinesProcessed(lines.size))
+    val result = getStatus.map(status => status.setLinesProcessed(lines.size))
+    log.trace("exiting sendRequest")
+    result
   }
 
   def getStatus: Future[ParrotStatus] = {
@@ -123,12 +101,12 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
 
     val rps = collection.getGauge("qps") match {
       case Some(d) => d
-      case None => 0.0
+      case None    => 0.0
     }
 
     val depth = collection.getGauge("queue_depth") match {
       case Some(d) => d
-      case None => 0.0
+      case None    => 0.0
     }
 
     val processed = queue.totalProcessed
@@ -136,7 +114,6 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     result.setQueueDepth(depth)
     result.setRequestsPerSecond(rps)
     result.setStatus(status.getStatus)
-    result.setJob(jobRef.get)
     Future.value(result.setTotalProcessed(processed))
   }
 
@@ -163,15 +140,15 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
   }
 
   def listThreads(group: ThreadGroup, container: Node): Node = {
-    val result = <g name={group.getName} class={group.getClass.toString}/>
+    val result = <g name={ group.getName } class={ group.getClass.toString }/>
     val threads = new Array[Thread](group.activeCount * 2 + 10)
     val nt = group.enumerate(threads, false)
     var threadNodes = mutable.ListBuffer[Elem]()
     for (i <- 0 until nt) {
       val t = threads(i)
       var methods = mutable.ListBuffer[Elem]()
-      t.getStackTrace foreach { e => methods += <method>{e}</method> }
-      threadNodes += <foo name={t.getName} class={t.getClass.toString}>{methods}</foo>
+      t.getStackTrace foreach { e => methods += <method>{ e }</method> }
+      threadNodes += <foo name={ t.getName } class={ t.getClass.toString }>{ methods }</foo>
     }
     var ng = group.activeGroupCount
     val groups = new Array[ThreadGroup](ng * 2 + 10)
@@ -179,12 +156,52 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     for (i <- 0 until ng) {
       listThreads(groups(i), result)
     }
-    <g name={group.getName} class={group.getClass.toString}>{result}</g>
+    <g name={ group.getName } class={ group.getClass.toString }>{ result }</g>
   }
 
   def fetchThreadStacks(): Future[String] = {
     val result = <root/>
     listThreads(getRootThreadGroup, result)
     Future.value(result.toString)
+  }
+
+  private def wandering(fileName: String): Boolean = {
+    val f = new File(fileName)
+    val p = f.getParent()
+    if (p == null) return false
+    val there = try {
+      new File(p).getCanonicalPath()
+    } catch {
+      case e: IOException =>
+        log.info("bad log file requested: %s: %s", fileName, e)
+        throw new RuntimeException("Can't find parent of log file %s".format(fileName), e)
+    }
+    there == new File(".").getCanonicalPath()
+  }
+
+  def getLog(offset: Long, length: Int, fileName: java.lang.String): Future[ParrotLog] = {
+
+    if (wandering(fileName))
+      throw new RuntimeException("can only reference files at the top of this sandbox")
+
+    val fl = new File(fileName)
+    val sz = fl.length()
+
+    // an offset of -1 means please position me near the end
+    var theLen = length
+    var theOffset = offset
+    if (offset == -1) {
+      theLen = 5000
+      theOffset = sz - theLen
+    }
+
+    val fr = new FileReader(fl)
+    val off = math.min(sz, math.max(0, theOffset))
+    fr.skip(off)
+    val len = math.max(0, math.min(theLen, math.min(Int.MaxValue.toLong, sz - off).toInt))
+    var buf = new Array[Char](len)
+    fr.read(buf)
+    fr.close
+    Future.value(new ParrotLog(off, len, new String(buf)))
   }
 }

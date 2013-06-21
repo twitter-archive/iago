@@ -8,15 +8,10 @@ import com.twitter.parrot.util.LocalCluster
 import com.twitter.util.RandomSocket
 
 new ParrotServerConfig[ParrotRequest, Response] {
-  loggers = new LoggerFactory(
-    level = Level.DEBUG,
-    handlers = new ConsoleHandlerConfig()
-  )
+  com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)
 
   httpPort = RandomSocket().getPort
 
   thriftServer = None
   clusterService = Some(new LocalCluster)
-  transport = Some(new MemcacheTransport)
-  queue = new RequestQueue(this)
 }

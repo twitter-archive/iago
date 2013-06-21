@@ -3,496 +3,137 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.twitter</groupId>
   <artifactId>iago</artifactId>
-  <version>0.5.1-SNAPSHOT</version>
+  <version>0.6.7</version>
   <name>${project.artifactId}</name>
   <description>Iago Load Generator</description>
   <inceptionYear>2012</inceptionYear>
-  <licenses>
-    <license>
-      <name>Apache License</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
+  <parent>
+    <groupId>com.twitter</groupId>
+    <artifactId>service-292</artifactId>
+    <version>0.0.12</version>
+    <relativePath>../parents/service-292/pom.xml</relativePath>
+  </parent>
   <properties>
-    <maven.compiler.source>1.5</maven.compiler.source>
-    <maven.compiler.target>1.5</maven.compiler.target>
-    <encoding>UTF-8</encoding>
-    <scala.version>2.9.2</scala.version>
+    <git.dir>${project.basedir}/../.git</git.dir>
     <mainClass>com.twitter.parrot.launcher.LauncherMain</mainClass>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <repositories>
     <repository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
+      <id>binaries</id>
+      <name>binaries</name>
+      <url>http://binaries.local.twitter.com/maven/</url>
     </repository>
   </repositories>
-  <pluginRepositories>
-    <pluginRepository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
-    </pluginRepository>
-  </pluginRepositories>
   <dependencies>
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
-      <version>${scala.version}</version>
+      <version>2.9.2</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common.zookeeper</groupId>
       <artifactId>server-set</artifactId>
-      <version>0.0.15</version>
+      <version>1.0.24</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>zookeeper-testing</artifactId>
-      <version>0.0.14</version>
+      <version>0.0.29</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-math</artifactId>
-      <version>2.1</version>
+      <version>2.2</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.5.8</version>
+      <version>1.6.1</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
-      <version>1.5.8</version>
+      <version>1.6.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-http</artifactId>
-      <version>5.3.4</version>
+      <version>6.5.0</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-kestrel</artifactId>
-      <version>5.3.4</version>
+      <version>6.5.0</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-memcached</artifactId>
-      <version>5.3.4</version>
+      <version>6.5.0</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-ostrich4</artifactId>
-      <version>5.3.4</version>
+      <version>6.5.0</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-thrift</artifactId>
-      <version>5.3.4</version>
+      <version>6.5.0</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>ostrich</artifactId>
-      <version>8.2.3</version>
+      <version>9.1.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>util-core</artifactId>
-      <version>5.3.6</version>
+      <version>6.3.6</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>util-eval</artifactId>
-      <version>5.3.6</version>
+      <version>6.3.6</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>util-logging</artifactId>
-      <version>5.3.6</version>
+      <version>6.3.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-core</artifactId>
+      <version>0.20.2.cdh3u2-t2</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-logging</groupId>
+      <artifactId>commons-logging</artifactId>
+      <version>1.1.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.hadoop.gplcompression</groupId>
+      <artifactId>hadoop-lzo</artifactId>
+      <version>0.4.15</version>
     </dependency>
     <!-- Test -->
     <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.9.1</artifactId>
-      <version>1.6.9</version>
+      <groupId>org.scalatest</groupId>
+      <artifactId>scalatest_2.9.2</artifactId>
+      <version>1.9.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
   <build>
-    <sourceDirectory>src/main/scala</sourceDirectory>
-    <scriptSourceDirectory>${basedir}/src/main/resources/scripts</scriptSourceDirectory>
-    <testSourceDirectory>src/test/scala</testSourceDirectory>
-    <resources>
-      <resource>
-        <directory>${basedir}/src/main/resources</directory>
-      </resource>
-    </resources>
     <plugins>
-      <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>3.0.1</version>
-        <executions>
-          <execution>
-            <id>scala-compile-first</id>
-            <phase>process-resources</phase>
-            <goals>
-              <goal>add-source</goal>
-              <goal>compile</goal>
-            </goals>
-            <configuration>
-              <args>
-                <param>-unchecked</param>
-                <param>-deprecation</param>
-                <param>-encoding</param>
-                <param>utf8</param>
-              </args>
-              <jvmArgs>
-                <jvmArg>-Xmx2G</jvmArg>
-              </jvmArgs>
-            </configuration>
-          </execution>
-          <execution>
-            <id>scala-test-compile</id>
-            <phase>process-test-resources</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-            <configuration>
-              <args>
-                <param>-unchecked</param>
-                <param>-deprecation</param>
-                <param>-encoding</param>
-                <param>utf8</param>
-              </args>
-              <jvmArgs>
-                <jvmArg>-Xmx2G</jvmArg>
-              </jvmArgs>
-            </configuration>
-          </execution>
-        </executions>
-        <configuration>
-          <jvmArgs>
-            <jvmArg>-Xmx2G</jvmArg>
-          </jvmArgs>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <executions>
-          <execution>
-            <id>default-testCompile</id>
-            <phase>test-compile</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-            <configuration>
-              <source>1.6</source>
-              <target>1.6</target>
-              <showDeprecation>true</showDeprecation>
-              <showWarnings>true</showWarnings>
-            </configuration>
-          </execution>
-          <execution>
-            <id>default-compile</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-            <configuration>
-              <source>1.6</source>
-              <target>1.6</target>
-              <showDeprecation>true</showDeprecation>
-              <showWarnings>true</showWarnings>
-            </configuration>
-          </execution>
-          <execution>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-            <configuration>
-              <source>1.6</source>
-              <target>1.6</target>
-              <showDeprecation>true</showDeprecation>
-              <showWarnings>true</showWarnings>
-            </configuration>
-          </execution>
-        </executions>
-        <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
-          <showDeprecation>true</showDeprecation>
-          <showWarnings>true</showWarnings>
-        </configuration>
-      </plugin>
       <plugin>
         <groupId>com.twitter</groupId>
         <artifactId>maven-finagle-thrift-plugin</artifactId>
-        <version>0.0.9</version> 
-        <executions>
-          <execution>
-            <id>thrift-sources</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-            <configuration>
-              <thriftGenerators>
-                <thriftGenerator>finagle</thriftGenerator>
-              </thriftGenerators>
-              <thriftOpts>
-                <thriftOpt>finagle</thriftOpt>
-              </thriftOpts>
-            </configuration>
-          </execution>
-          <execution>
-            <id>thrift-test-sources</id>
-            <phase>generate-test-sources</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-            <configuration>
-              <thriftGenerators>
-                <thriftGenerator>finagle</thriftGenerator>
-              </thriftGenerators>
-              <thriftOpts>
-                <thriftOpt>finagle</thriftOpt>
-              </thriftOpts>
-            </configuration>
-          </execution>
-        </executions>
         <configuration>
           <thriftGenerators>
             <thriftGenerator>finagle</thriftGenerator>
           </thriftGenerators>
-          <thriftOpts>
-            <thriftOpt>finagle</thriftOpt>
-          </thriftOpts>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.7</version>
-        <executions>
-          <execution>
-            <id>add-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>target/generated-sources</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.2.1</version>
-        <configuration>
-          <mainClass>${mainClass}</mainClass>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>2.1</version>
-        <executions>
-          <execution>
-            <id>build-classpath</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>build-classpath</goal>
-            </goals>
-            <configuration>
-              <outputFile>.classpath.txt</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>2.4</version>
-        <executions>
-          <execution>
-            <id>default-jar</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-            <configuration>
-              <useDefaultManifestFile>true</useDefaultManifestFile>
-              <archive>
-                <manifest>
-                  <addClasspath>true</addClasspath>
-                  <mainClass>${mainClass}</mainClass>
-                  <classpathPrefix>libs/</classpathPrefix>
-                </manifest>
-              </archive>
-            </configuration>
-          </execution>
-        </executions>
-        <configuration>
-          <useDefaultManifestFile>true</useDefaultManifestFile>
-          <archive>
-            <manifest>
-              <addClasspath>true</addClasspath>
-              <mainClass>${mainClass}</mainClass>
-              <classpathPrefix>libs/</classpathPrefix>
-            </manifest>
-          </archive>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.2.1</version>
-        <executions>
-          <execution>
-            <id>make-assembly</id>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-            <configuration>
-              <descriptorRefs>
-                <descriptorRef>package-dist</descriptorRef>
-              </descriptorRefs>
-              <archive>
-                <manifest>
-                  <mainClass>${mainClass}</mainClass>
-                </manifest>
-              </archive>
-            </configuration>
-          </execution>
-        </executions>
-        <dependencies>
-          <dependency>
-            <groupId>com.twitter</groupId>
-            <artifactId>package-dist</artifactId>
-            <version>0.0.2</version>
-            <scope>compile</scope>
-          </dependency>
-        </dependencies>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>package-dist</descriptorRef>
-          </descriptorRefs>
-          <archive>
-            <manifest>
-              <mainClass>${mainClass}</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-clean-plugin</artifactId>
-        <version>2.4.1</version>
-        <executions>
-          <execution>
-            <id>default-clean</id>
-            <phase>clean</phase>
-            <goals>
-              <goal>clean</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-install-plugin</artifactId>
-        <version>2.3.1</version>
-        <executions>
-          <execution>
-            <id>default-install</id>
-            <phase>install</phase>
-            <goals>
-              <goal>install</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>2.4.3</version>
-        <executions>
-          <execution>
-            <id>default-resources</id>
-            <phase>process-resources</phase>
-            <goals>
-              <goal>resources</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>default-testResources</id>
-            <phase>process-test-resources</phase>
-            <goals>
-              <goal>testResources</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.12</version>
-        <executions>
-          <execution>
-            <id>default-test</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <argLine>-Xmx1024m</argLine>
-              <redirectTestOutputToFile>false</redirectTestOutputToFile>
-              <includes>
-                <include>**/Test*.java</include>
-                <include>**/*Test.java</include>
-                <include>**/*Spec.java</include>
-              </includes>
-              <excludes>
-                <exclude>**/*ConfigSpec.java</exclude>
-              </excludes>
-            </configuration>
-          </execution>
-        </executions>
-        <configuration>
-          <argLine>-Xmx1024m</argLine>
-          <redirectTestOutputToFile>false</redirectTestOutputToFile>
-          <additionalClasspathElements>
-            <additionalClasspathElement>${basedir}/config</additionalClasspathElement>
-          </additionalClasspathElements>
-          <includes>
-            <include>**/Test*.java</include>
-            <include>**/*Test.java</include>
-            <include>**/*Spec.java</include>
-          </includes>
-          <excludes>
-            <exclude>**/*ConfigSpec.java</exclude>
-          </excludes>
         </configuration>
       </plugin>
     </plugins>
   </build>
-  <reporting>
-    <outputDirectory>target/site</outputDirectory>
-    <plugins>
-      <plugin>
-        <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>2.12</version>
-      </plugin>
-      <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>3.0.1</version>
-      </plugin>
-      <plugin>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.8.1</version>
-      </plugin>
-    </plugins>
-  </reporting>
 </project>

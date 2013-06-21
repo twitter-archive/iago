@@ -1,4 +1,5 @@
 import com.twitter.logging.LoggerFactory
+import com.twitter.logging.Level
 import com.twitter.logging.config._
 import com.twitter.ostrich.admin.AdminServiceFactory
 import com.twitter.parrot.config.ParrotServerConfig
@@ -8,10 +9,8 @@ import com.twitter.util.RandomSocket
 import org.jboss.netty.handler.codec.http.HttpResponse
 
 new ParrotServerConfig[ParrotRequest, HttpResponse] {
-  loggers = new LoggerFactory(
-    level = Level.DEBUG,
-    handlers = new ConsoleHandlerConfig
-  )
+
+  com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)
 
   httpPort = RandomSocket().getPort
 
@@ -29,7 +28,8 @@ new ParrotServerConfig[ParrotRequest, HttpResponse] {
   slopTimeInMs = 100
   testHosts = List("api.twitter.com")
   charEncoding = "deflate"
-  httpHostHeader = "api.twitter.com"
+    
+  victim = HostPortListVictim("twitter.com:80")
 
   // for thrift
   parrotPort = 9999

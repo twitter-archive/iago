@@ -1,32 +1,27 @@
+import com.twitter.conversions.storage._
 import com.twitter.logging._
-import com.twitter.parrot.config.ParrotServerConfig
+import com.twitter.parrot.config._
 import com.twitter.parrot.server._
 import com.twitter.parrot.util.ParrotClusterImpl
-#{responseTypeImport}
 
-new ParrotServerConfig[#{requestType}, #{responseType}] {
+#{imports}
+
+new #{configType}[#{requestType}, #{responseType}] {
+
   loggers = new LoggerFactory(
-    level = Level.INFO,
+    level = Level.#{traceLevel},
     handlers = FileHandler(
-      filename = "parrot.log",
-      rollPolicy = Policy.Hourly,
+      filename = "parrot-server.log",
+      rollPolicy = Policy.MaxSize(100.megabytes),
       rotateCount = 6
     )
-  ) :: new LoggerFactory(
-    node = "stats",
-    level = Level.INFO,
-    useParents = false,
-    handlers = ScribeHandler(
-      hostname = "localhost",
-      category = "cuckoo_json",
-      maxMessagesPerTransaction = 100,
-      formatter = BareFormatter
-    )
-  ) :: loggers
+  ) #{statlogger} :: loggers
 
-  zkHostName = #{zookeeper}
-  zkPort = 2181
-  zkNode = "/twitter/service/parrot2/#{jobName}"
+  zkHostName = #{zkHostName}
+  zkNode = "#{zkNode}"
+  zkPort = #{zkPort}
+
+  victim = #{victim}
 
   statsName = "parrot_#{jobName}"
   thinkTime = 0
@@ -34,9 +29,8 @@ new ParrotServerConfig[#{requestType}, #{responseType}] {
   slopTimeInMs = 100
   testHosts = List("api.twitter.com")
   charEncoding = None
-  httpHostHeader = Some("#{header}")
-  urlMapper = (uri: String) => uri // TODO: need to let launch_parrot parameterize this
-  doAuthorization = #{doAuth}
+  httpHostHeader = "#{header}"
+  httpHostHeaderPort = #{httpHostHeaderPort}
   thriftClientId = "#{thriftClientId}"
   reuseConnections = #{reuseConnections}
   hostConnectionLimit = #{hostConnectionLimit}
@@ -44,6 +38,8 @@ new ParrotServerConfig[#{requestType}, #{responseType}] {
   hostConnectionIdleTimeInMs = #{hostConnectionIdleTimeInMs}
   hostConnectionMaxIdleTimeInMs = #{hostConnectionMaxIdleTimeInMs}
   hostConnectionMaxLifeTimeInMs = #{hostConnectionMaxLifeTimeInMs}
+  requestTimeoutInMs = #{requestTimeoutInMs}
+  tcpConnectTimeoutInMs = #{tcpConnectTimeoutInMs}
 
   // for thrift
   parrotPort = 9999

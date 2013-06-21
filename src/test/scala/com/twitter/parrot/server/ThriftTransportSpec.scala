@@ -20,47 +20,54 @@ import com.twitter.io.TempFile
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.parrot.integration.EchoServer
-import com.twitter.parrot.thrift.TargetHost
 import com.twitter.parrot.util.OutputBuffer
-import com.twitter.util.{RandomSocket, Eval}
+import com.twitter.util.{ RandomSocket, Eval }
 import java.util.concurrent.atomic.AtomicInteger
 import org.apache.thrift.protocol._
-import org.specs.SpecificationWithJUnit
+import org.junit.runner.RunWith
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+import org.scalatest.OneInstancePerTest
 
-class ThriftTransportSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class ThriftTransportSpec extends WordSpec with MustMatchers with OneInstancePerTest {
   val log = Logger.get(getClass)
   var seqId = new AtomicInteger(0)
 
   "Thrift Transport" should {
     "work inside a server config" in {
-      val serverConfig = makeServerConfig()
+      val victimPort = RandomSocket.nextPort()
+      val serverConfig = makeServerConfig(victimPort)
       val server: ParrotServer[ParrotRequest, Array[Byte]] = new ParrotServerImpl(serverConfig)
-      server mustNotBe null
+      server must not be null
     }
 
     "send requests to a Thrift service" in {
       val victimPort = RandomSocket.nextPort()
       val message = new ThriftClientRequest(serialize("echo", "message", "hello"), false)
-      val request = new ParrotRequest(new TargetHost("", "localhost", victimPort), message = message)
-      val serverConfig = makeServerConfig()
+      val request = new ParrotRequest(message = message)
+      val serverConfig = makeServerConfig(victimPort)
+
       val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
 
       EchoServer.serve(victimPort)
 
       val rep: Array[Byte] = transport.sendRequest(request).get()
 
-      EchoServer.getRequestCount mustNotBe 0
-      rep.containsSlice("hello".getBytes) mustBe true
+      EchoServer.getRequestCount must not be 0
+      rep.containsSlice("hello".getBytes) must be(true)
     }
   }
 
-  def makeServerConfig() = {
+  def makeServerConfig(victimPort: Int) = {
     val result = new Eval().apply[ParrotServerConfig[ParrotRequest, Array[Byte]]](
-      TempFile.fromResourcePath("/test-thrift.scala")
-    )
+      TempFile.fromResourcePath("/test-thrift.scala"))
     result.parrotPort = RandomSocket().getPort
     result.thriftServer = Some(new ThriftServerImpl)
-    result.transport = Some(new ThriftTransport(Some(result)))
+    result.victim = result.HostPortListVictim("localhost:" + victimPort)
+    result.transport = Some(new ThriftTransport(result))
+    result.queue = Some(new RequestQueue(result))
     result
   }
 

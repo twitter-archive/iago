@@ -19,33 +19,26 @@ import com.twitter.conversions.time._
 import com.twitter.logging.{Logger, LoggerFactory}
 import com.twitter.ostrich.admin._
 import com.twitter.parrot.feeder.{LogSource, LogSourceImpl, ParrotFeeder}
-import com.twitter.parrot.thrift.TargetHost
 import com.twitter.util.{Duration, Config}
 import java.util.concurrent.TimeUnit
 
 trait ParrotFeederConfig extends Config[RuntimeEnvironment => Service]
   with ParrotCommonConfig
 {
-  var loggers: List[LoggerFactory] = Nil
-  var jobName = "parrot"
-  var maxRequests = 0
   var batchSize = 1000
-  var victimScheme = "http"
-  var victimPort = 8080
-  var victimHosts = List("localhost")
-  var inputLog: String = ""
-  var duration = Duration(0, TimeUnit.MILLISECONDS)
-  var linesToSkip = 0
   var busyCutoff = 10000
-  var reuseFile = false
-  var pollInterval = Duration(1, TimeUnit.SECONDS)
-  var numThreads = 0
-  var requestRate = 1
-  var parser = "http"
-  var numInstances = 1
+  var duration = Duration(0, TimeUnit.MILLISECONDS)
   var httpPort = 9993
-
-  var victimTargets: Option[List[TargetHost]] = None
+  var inputLog: String = ""
+  var jobName = "parrot"
+  var linesToSkip = 0
+  var maxRequests = 0
+  var numInstances = 1
+  var numThreads = 0
+  var pollInterval = Duration(1, TimeUnit.SECONDS)
+  var requestRate = 1
+  var reuseFile = false
+  var statsName = "parrot-feeder"
 
   // runtime configured
   var logSource: Option[LogSource] = None
@@ -62,7 +55,7 @@ trait ParrotFeederConfig extends Config[RuntimeEnvironment => Service]
       statsNodes = new StatsFactory(
         reporters = new JsonStatsLoggerFactory(
           period = 1.minute,
-          serviceName = Some("parrot-feeder")
+          serviceName = statsName
         ) :: new TimeSeriesCollectorFactory()
       )
     )(runtime)

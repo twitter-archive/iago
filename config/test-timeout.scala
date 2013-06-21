@@ -7,20 +7,14 @@ new ParrotServerConfig[ParrotRequest, Unit] {
   // DIFFERENCES
   connectionTimeoutInMs = 10L
 
-  // SAME AS test-server.scala BELOW HERE
-
-  loggers = new LoggerFactory(
-    level = Level.DEBUG,
-    handlers = new ConsoleHandlerConfig()
-  )
+  com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)
 
   thinkTime = 0
   replayTimeCheck = false
   slopTimeInMs = 100
   testHosts = List("api.twitter.com")
   charEncoding = "deflate"
-  httpHostHeader = "api.twitter.com"
-
+    
   // for thrift
   parrotPort = 9999
   thriftName = "parrot"

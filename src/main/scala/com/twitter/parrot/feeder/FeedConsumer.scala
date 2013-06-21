@@ -15,14 +15,14 @@ limitations under the License.
 */
 package com.twitter.parrot.feeder
 
-import collection.JavaConversions._
+import collection.JavaConverters._
 import com.twitter.logging.Logger
 import com.twitter.parrot.util.{RemoteParrot, InternalCounter}
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.LinkedBlockingQueue
 
 class FeedConsumer(parrot: RemoteParrot) extends Thread {
-  val log = Logger(getClass.getName)
+  private[this] val log = Logger(getClass.getName)
   val isShutdown = new AtomicBoolean(false)
   val queue = new LinkedBlockingQueue[List[String]](100)
 
@@ -54,11 +54,19 @@ class FeedConsumer(parrot: RemoteParrot) extends Thread {
   }
 
   def addRequest(request: List[String]) {
+    log.trace("parrot[%s:%d] adding requests of size=%d to the queue",
+      parrot.host,
+      parrot.port,
+      request.size)
     queue.put(request)
+    log.trace("parrot[%s:%d] added requests of size=%d to the queue",
+      parrot.host,
+      parrot.port,
+      request.size)
   }
 
   private[this] def sendRequest(parrot: RemoteParrot, request: List[String]) {
-    val success = parrot.sendRequest(request)
+    val success = parrot.sendRequest(request.asJava)
     log.info("wrote batch of size %d to %s:%d rps=%g depth=%g status=%s lines=%d",
       request.size,
       parrot.host,

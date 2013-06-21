@@ -32,4 +32,3 @@ class UniformDistribution(arrivalsPerSecond: Int) extends RequestDistribution {
     Duration(nanosToNextArrival.toLong, TimeUnit.NANOSECONDS)
   }
 }
-

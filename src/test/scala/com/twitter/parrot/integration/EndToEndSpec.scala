@@ -15,16 +15,32 @@ limitations under the License.
 */
 package com.twitter.parrot.integration
 
-import com.twitter.io.TempFile
-import com.twitter.parrot.config.{ParrotFeederConfig, ParrotServerConfig}
-import com.twitter.parrot.feeder.{InMemoryLog, ParrotFeeder}
-import com.twitter.parrot.processor.{SimpleRecordProcessor, RecordProcessorFactory}
-import com.twitter.parrot.server._
-import com.twitter.util.{Time, RandomSocket, Eval}
 import org.jboss.netty.handler.codec.http.HttpResponse
-import org.specs.SpecificationWithJUnit
+import org.junit.runner.RunWith
+import org.scalatest.WordSpec
+import org.scalatest.concurrent.Eventually
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+import org.scalatest.time.Seconds
+import org.scalatest.time.Span
 
-class EndToEndSpec extends SpecificationWithJUnit {
+import com.twitter.io.TempFile
+import com.twitter.logging.Logger
+import com.twitter.parrot.config.ParrotFeederConfig
+import com.twitter.parrot.config.ParrotServerConfig
+import com.twitter.parrot.feeder.InMemoryLog
+import com.twitter.parrot.feeder.ParrotFeeder
+import com.twitter.parrot.server.FinagleTransport
+import com.twitter.parrot.server.ParrotRequest
+import com.twitter.parrot.server.ParrotServer
+import com.twitter.parrot.server.ParrotServerImpl
+import com.twitter.parrot.server.ThriftServerImpl
+import com.twitter.util.Eval
+import com.twitter.util.RandomSocket
+
+@RunWith(classOf[JUnitRunner])
+class EndToEndSpec extends WordSpec with MustMatchers with Eventually {
+  private val log = Logger.get(getClass.getName)
   val site = "twitter.com"
   val urls = List(
     "about",
@@ -32,20 +48,16 @@ class EndToEndSpec extends SpecificationWithJUnit {
     "about/security",
     "tos",
     "privacy",
-    "about/resources"
-  )
+    "about/resources")
 
   val serverConfig = makeServerConfig()
-  val transport = serverConfig.transport.get.asInstanceOf[FinagleTransport]
 
-  RecordProcessorFactory.registerProcessor("default", new SimpleRecordProcessor(serverConfig.service.get, serverConfig))
+  // Parrot integration tests shouldn't run in CI, due to no network connections
 
-  "Feeder and Server" should {
-    if (System.getenv("SBT_CI") != null) {
-      skip("Parrot integration tests shouldn't run in CI, due to no network connections")
-    }
+  if (System.getenv.get("SBT_CI") == null && System.getProperty("SBT_CI") == null) "Feeder and Server" should {
 
     "Send requests to the places we tell them" in {
+      val transport = serverConfig.transport.get.asInstanceOf[FinagleTransport]
       val server: ParrotServer[ParrotRequest, HttpResponse] = new ParrotServerImpl(serverConfig)
       server.start()
 
@@ -57,19 +69,25 @@ class EndToEndSpec extends SpecificationWithJUnit {
 
       feeder.start()
       try {
-        transport.allRequests.toInt must eventually(be(urls.size))
-      }
-      catch {
-        case e: Exception => fail(e.getMessage)
-      }
-      finally {
-        // Feeder will shutdown Server
+        eventually(timeout(Span(2, Seconds))) {
+          transport.allRequests.toInt must be(urls.size)
+        }
+        assert(serverConfig.loadTestInstance.get.asInstanceOf[TestRecordProcessor].responded)
+      } finally {
+        // The Feeder will shut down the Server for us
         feeder.shutdown()
+      }
+      eventually(timeout(Span(1, Seconds))) {
+        assert(serverConfig.loadTestInstance.get.asInstanceOf[TestRecordProcessor].properlyShutDown)
       }
     }
 
+    /*
+     * This test is failing. Since WordSpec lacks "skip", we comment it out. It should be fixed
+     * some day but has been broken for several months.
+
     "Send requests at the rate we ask them to" in {
-      skip("failing, but i need to work around")
+      val transport = serverConfig.transport.get.asInstanceOf[FinagleTransport]
       val server: ParrotServer[ParrotRequest, HttpResponse] = new ParrotServerImpl(serverConfig)
       server.start()
 
@@ -94,36 +112,35 @@ class EndToEndSpec extends SpecificationWithJUnit {
       feeder.start()
 
       try {
-        transport.allRequests.toInt must eventually(be(totalRequests))
-        start.untilNow.inSeconds.toDouble must be_<= (seconds * 1.20)
-        start.untilNow.inSeconds.toDouble must be_>= (seconds * 0.80)
-      }
-      catch {
-        case e: Exception => fail(e.getMessage)
-      }
-      finally {
-        // Feeder will shutdown Server
+        eventually(timeout(Span(2, Seconds))) {
+          transport.allRequests.toInt must be(totalRequests)
+        }
+        val untilNow = start.untilNow.inSeconds.toDouble
+        untilNow must be <= (seconds * 1.20)
+        untilNow must be >= (seconds * 0.80)
+      } finally {
+        // The Feeder will shut down the Server for us
         feeder.shutdown()
+        //transport.shutdown
       }
     }
+
+    */
   }
 
   def makeServerConfig(): ParrotServerConfig[ParrotRequest, HttpResponse] = {
     val result = new Eval().apply[ParrotServerConfig[ParrotRequest, HttpResponse]](
-      TempFile.fromResourcePath("/test-server.scala")
-    )
+      TempFile.fromResourcePath("/test-server.scala"))
     result.parrotPort = RandomSocket().getPort
     result.thriftServer = Some(new ThriftServerImpl)
     result.transport = Some(new FinagleTransport(result))
+    result.loadTestInstance = Some(new TestRecordProcessor(result.service.get, result))
     result
   }
 
   def makeFeederConfig(): ParrotFeederConfig = {
     val result = new Eval().apply[ParrotFeederConfig](TempFile.fromResourcePath("/test-feeder.scala"))
     result.parrotPort = serverConfig.parrotPort
-    result.victimHosts = List(site)
-    result.victimPort = 80
-    result.victimScheme = "http"
     result
   }
 }

@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 import java.lang.IllegalArgumentException
 
 /**
- * SinusoidalPoissonProcess is a RequestDistribution that oscillates sinusoidally betwen minRate and maxRate.
+ * SinusoidalPoissonProcess is a RequestDistribution that oscillates sinusoidally between minRate and maxRate.
  * If warmUpDuration is None, the initial rate is the average of minRate and maxRate, otherwise the request
  * rate ramps linearly from 0 to that average. Once warm up is complete, the request rate starts following
  * a sine wave pattern, rising to maxRate in 1/4 period and returning to maxRate very period thereafter.

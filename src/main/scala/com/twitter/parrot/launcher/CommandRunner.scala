@@ -15,23 +15,24 @@ limitations under the License.
 */
 package com.twitter.parrot.launcher
 
-import java.io.{OutputStream, InputStream}
-import java.util.concurrent.{Future, Callable, Executors}
+import java.io.{ OutputStream, InputStream }
+import java.util.concurrent.{ Future, Callable, Executors }
+import com.twitter.logging.Logger
+import com.twitter.logging.Level
+import com.twitter.parrot.util.PrettyDuration
+import com.twitter.util.Time
+import com.twitter.util.Stopwatch
 
 object CommandRunner {
   private[launcher] val threadPool = Executors.newFixedThreadPool(3)
-  var verbose = false;
+  private[this] val log = Logger.get(getClass)
+  var verbose = false
 
-  def apply(command: String): Boolean = { apply(command, verbose) }
+  def apply(command: String): Int = { apply(command, verbose) }
 
-  def apply(command: String, verbose: Boolean) = {
-    try {
-      val runner = new CommandRunner(command, verbose)
-      runner.run()
-    }
-    catch {
-      case _ => false
-    }
+  def apply(command: String, verbose: Boolean): Int = {
+    val runner = new CommandRunner(command, verbose)
+    runner.run()
   }
 
   def exists(command: String): Boolean = { exists(command, verbose) }
@@ -41,8 +42,7 @@ object CommandRunner {
       val runner = new CommandRunner("which %s".format(command), verbose)
       runner.run()
       runner.getOutput.length > 0
-    }
-    catch {
+    } catch {
       case _ => false
     }
   }
@@ -52,9 +52,16 @@ object CommandRunner {
   }
 
   def setVerbose(verbose: Boolean) { this.verbose = verbose }
+
+  def timeRun(command: String): Int = {
+    val elapsed = Stopwatch.start()
+    val result = apply(command, true)
+    println(PrettyDuration(elapsed()))
+    result
+  }
 }
 
-class CommandRunner(command: String, verbose: Boolean = false) {
+class CommandRunner(command: String, verbose: Boolean = verbose) {
   private[this] val process = Runtime.getRuntime.exec(command)
   private[this] val inputStream = process.getInputStream
   private[this] val errorStream = process.getErrorStream
@@ -66,14 +73,29 @@ class CommandRunner(command: String, verbose: Boolean = false) {
   var fOutput: Future[String] = null
   var fError: Future[String] = null
 
-  def run() = {
+  def run(): Int = {
     fOutput = CommandRunner.threadPool.submit(output)
     fError = CommandRunner.threadPool.submit(error)
 
     if (verbose) println(command)
-    process.waitFor()
+    val status = process.waitFor()
 
-    fError.get.length == 0
+    if (verbose) dumpOutput()
+
+    status
+  }
+
+  def dumpOutput() {
+    echo("stdout: ", getOutput, Console.out)
+    echo("stderr: ", getError, Console.err)
+  }
+
+  private def echo(prefix: String, msg: String, out: java.io.PrintStream) {
+    if (msg.trim.length != 0)
+      for (i <- msg.split("\n")) {
+        out.print(prefix)
+        out.println(i)
+      }
   }
 
   def getOutput = {
@@ -86,8 +108,8 @@ class CommandRunner(command: String, verbose: Boolean = false) {
 }
 
 class StreamConsumer(stream: InputStream,
-                     reader: OutputStream,
-                     verbose: Boolean) extends Callable[String] {
+  reader: OutputStream,
+  verbose: Boolean) extends Callable[String] {
   override def call() = {
     var running = true
     val buffer = new StringBuilder
@@ -95,9 +117,7 @@ class StreamConsumer(stream: InputStream,
       val c = stream.read
       if (c == -1) {
         running = false
-      }
-      else {
-        if (verbose) print(c.toChar)
+      } else {
         buffer.append(c.toChar)
 
         // This is a Mesos-related hack, since currently it needs our passwords the first
@@ -133,8 +153,7 @@ class PasswordReader(stream: OutputStream) extends Callable[Unit] {
           stream.flush()
           running = false
         }
-      }
-      catch {
+      } catch {
         case _ => println("exception in password reader, continuing...")
       }
     }

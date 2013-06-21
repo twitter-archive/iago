@@ -15,15 +15,23 @@ limitations under the License.
 */
 package com.twitter.parrot.util
 
-import collection.JavaConversions._
+import java.util.concurrent.LinkedBlockingQueue
+
+import org.junit.runner.RunWith
+import org.scalatest.BeforeAndAfter
+import org.scalatest.OneInstancePerTest
+import org.scalatest.WordSpec
+import org.scalatest.concurrent.Eventually
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+
 import com.google.common.collect.ImmutableSet
 import com.twitter.common.application.ShutdownRegistry
 import com.twitter.common.zookeeper.testing.ZooKeeperTestServer
 import com.twitter.thrift.ServiceInstance
-import java.util.concurrent.LinkedBlockingQueue
-import org.specs.SpecificationWithJUnit
 
-class ParrotClusterSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class ParrotClusterSpec extends WordSpec with MustMatchers with Eventually with OneInstancePerTest with BeforeAndAfter {
   val shutdownRegistry = new ShutdownRegistry.ShutdownRegistryImpl
   val zkTestServer = new ZooKeeperTestServer(0, shutdownRegistry)
   val zkNode = "/twitter/service/parrot/testNode"
@@ -37,108 +45,109 @@ class ParrotClusterSpec extends SpecificationWithJUnit {
    */
   def createDiscovery = { new Discovery(None, -1, zkNode, Some(zkTestServer.createClient)) }
 
-  "Discovery" should {
+  if (System.getenv.get("SBT_CI") == null && System.getProperty("SBT_CI") == null)
+    "Discovery" should {
 
-    doAfter {
-      shutdownRegistry.execute()
-    }
-
-    "let us join a ZK cluster" >> {
-      val disco = createDiscovery.join(9999)
-      disco.connected must_== true
-
-      disco.shutdown()
-    }
-
-    /* This test is DEPRECATED -- calling get on the client reconnects us */
-    "let us leave a ZK cluster" >> {
-      val disco = createDiscovery.join(9999)
-      disco.shutdown()
-      disco.connected must_== true // should be false! calling connected reconnects us
-
-      disco.shutdown() // yes, we just called it. oh well.
-    }
-
-    "let us monitor a ZK cluster we're joined to" >> {
-      val cluster = new ParrotClusterImpl() {
-        override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) = ()
+      after {
+        shutdownRegistry.execute()
       }
-      val disco = createDiscovery.join(9999).monitor(cluster)
 
-      cluster.instances.size must_== 1
+      "let us join a ZK cluster" in {
+        val disco = createDiscovery.join(9999)
+        disco.connected must be(true)
 
-      disco.shutdown()
-    }
-
-    "let us monitor a ZK cluster we're a client of" >> {
-      val cluster = new ParrotClusterImpl() {
-        override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) = ()
+        disco.shutdown()
       }
-      val server = createDiscovery.join(9999)
-      val client = createDiscovery.monitor(cluster)
 
-      cluster.instances.size must_== 1
+      /* This test is DEPRECATED -- calling get on the client reconnects us */
+      "let us leave a ZK cluster" in {
+        val disco = createDiscovery.join(9999)
+        disco.shutdown()
+        disco.connected must be(true) // should be false! calling connected reconnects us
 
-      server.shutdown()
-      client.shutdown()
-    }
+        disco.shutdown() // yes, we just called it. oh well.
+      }
 
-    "notice when a member enters" >> {
-      val queue = new LinkedBlockingQueue[ImmutableSet[ServiceInstance]]
-      val cluster = new ParrotClusterImpl {
-        override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) {
-          queue.offer(set)
+      "let us monitor a ZK cluster we're joined to" in {
+        val cluster = new ParrotClusterImpl() {
+          override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) = ()
         }
+        val disco = createDiscovery.join(9999).monitor(cluster)
+
+        cluster.instances.size must be(1)
+
+        disco.shutdown()
       }
-      val server1 = createDiscovery.join(9999)
-      val client = createDiscovery.monitor(cluster)
 
-      queue.take.size must_== 1
-
-      val server2 = createDiscovery.join(9998)
-
-      queue.take.size must_== 2
-
-      server1.shutdown()
-      server2.shutdown()
-      client.shutdown()
-    }
-
-    "notice when a member leaves" >> {
-      val queue = new LinkedBlockingQueue[ImmutableSet[ServiceInstance]]
-      val cluster = new ParrotClusterImpl {
-        override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) {
-          queue.offer(set)
+      "let us monitor a ZK cluster we're a client of" in {
+        val cluster = new ParrotClusterImpl() {
+          override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) = ()
         }
+        val server = createDiscovery.join(9999)
+        val client = createDiscovery.monitor(cluster)
+
+        cluster.instances.size must be(1)
+
+        server.shutdown()
+        client.shutdown()
       }
-      val server = createDiscovery.join(9999)
-      val client = createDiscovery.monitor(cluster)
 
-      queue.take.size must_== 1
-
-      server.shutdown()
-
-      queue.take.size must_== 0
-
-      client.shutdown()
-    }
-
-    "see members that are joined before us" >> {
-      val queue = new LinkedBlockingQueue[ImmutableSet[ServiceInstance]]
-      val cluster = new ParrotClusterImpl {
-        override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) {
-          queue.offer(set)
+      "notice when a member enters" in {
+        val queue = new LinkedBlockingQueue[ImmutableSet[ServiceInstance]]
+        val cluster = new ParrotClusterImpl {
+          override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) {
+            queue.offer(set)
+          }
         }
+        val server1 = createDiscovery.join(9999)
+        val client = createDiscovery.monitor(cluster)
+
+        queue.take.size must be(1)
+
+        val server2 = createDiscovery.join(9998)
+
+        queue.take.size must be(2)
+
+        server1.shutdown()
+        server2.shutdown()
+        client.shutdown()
       }
-      val server1 = createDiscovery.join(9999)
-      val server2 = createDiscovery.join(9998)
-      val client = createDiscovery.monitor(cluster)
 
-      queue.take.size must_== 2
+      "notice when a member leaves" in {
+        val queue = new LinkedBlockingQueue[ImmutableSet[ServiceInstance]]
+        val cluster = new ParrotClusterImpl {
+          override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) {
+            queue.offer(set)
+          }
+        }
+        val server = createDiscovery.join(9999)
+        val client = createDiscovery.monitor(cluster)
 
-      server1.shutdown()
-      server2.shutdown()
-      client.shutdown()
+        queue.take.size must be(1)
+
+        server.shutdown()
+
+        queue.take.size must be(0)
+
+        client.shutdown()
+      }
+
+      "see members that are joined before us" in {
+        val queue = new LinkedBlockingQueue[ImmutableSet[ServiceInstance]]
+        val cluster = new ParrotClusterImpl {
+          override def handleClusterEvent(set: ImmutableSet[ServiceInstance]) {
+            queue.offer(set)
+          }
+        }
+        val server1 = createDiscovery.join(9999)
+        val server2 = createDiscovery.join(9998)
+        val client = createDiscovery.monitor(cluster)
+
+        queue.take.size must be(2)
+
+        server1.shutdown()
+        server2.shutdown()
+        client.shutdown()
+      }
     }
-  }
 }

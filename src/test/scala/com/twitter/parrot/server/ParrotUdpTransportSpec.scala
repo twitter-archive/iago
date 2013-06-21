@@ -15,49 +15,70 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import com.twitter.conversions.time._
+import java.net.InetSocketAddress
+import java.util.concurrent.Executors
+
+import org.jboss.netty.bootstrap.ConnectionlessBootstrap
+import org.jboss.netty.channel.Channel
+import org.jboss.netty.channel.ChannelFuture
+import org.jboss.netty.channel.ChannelFutureListener
+import org.jboss.netty.channel.ChannelHandlerContext
+import org.jboss.netty.channel.ChannelPipeline
+import org.jboss.netty.channel.ChannelPipelineFactory
+import org.jboss.netty.channel.Channels
+import org.jboss.netty.channel.MessageEvent
+import org.jboss.netty.channel.SimpleChannelUpstreamHandler
+import org.jboss.netty.channel.socket.oio.OioDatagramChannelFactory
+import org.jboss.netty.handler.codec.string.StringDecoder
+import org.jboss.netty.handler.codec.string.StringEncoder
+import org.jboss.netty.util.CharsetUtil
+import org.junit.runner.RunWith
+import org.scalatest.OneInstancePerTest
+import org.scalatest.WordSpec
+import org.scalatest.concurrent.Eventually
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+import org.scalatest.time.Millis
+import org.scalatest.time.Seconds
+import org.scalatest.time.Span
+
+import com.twitter.conversions.time.intToTimeableNumber
 import com.twitter.finagle.RequestTimeoutException
 import com.twitter.io.TempFile
 import com.twitter.ostrich.stats.Stats
-import com.twitter.parrot.config.{ParrotFeederConfig, ParrotServerConfig}
-import com.twitter.parrot.feeder.{InMemoryLog, ParrotFeeder}
-import com.twitter.parrot.processor.{RecordProcessor, RecordProcessorFactory}
-import com.twitter.parrot.thrift.ParrotJob
-import com.twitter.parrot.thrift.TargetHost
+import com.twitter.parrot.config.ParrotFeederConfig
+import com.twitter.parrot.config.ParrotServerConfig
+import com.twitter.parrot.feeder.InMemoryLog
+import com.twitter.parrot.feeder.ParrotFeeder
+import com.twitter.parrot.processor.RecordProcessor
+import com.twitter.util.Eval
+import com.twitter.util.RandomSocket
 import com.twitter.util.Try
-import com.twitter.util.{RandomSocket, Eval}
-import java.net.InetSocketAddress
-import java.util.concurrent.Executors
-import org.jboss.netty.bootstrap.ConnectionlessBootstrap
-import org.jboss.netty.channel._
-import org.jboss.netty.channel.socket.oio.OioDatagramChannelFactory
-import org.jboss.netty.handler.codec.string.{StringDecoder, StringEncoder}
-import org.jboss.netty.util.CharsetUtil
-import org.specs.SpecificationWithJUnit
 
-class ParrotUdpTransportSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class ParrotUdpTransportSpec extends WordSpec with MustMatchers with OneInstancePerTest with Eventually {
+
+  val victimPort = RandomSocket.nextPort()
+  val serverConfig = makeServerConfig(victimPort)
+
   "Parrot UDP Transport" should {
     "work inside a server config" in {
-      val serverConfig = makeServerConfig()
       val server: ParrotServer[ParrotRequest, String] = new ParrotServerImpl(serverConfig)
-      server mustNotBe null
+      server must not be null
     }
 
     "send requests to an 'echo' service" in {
-      val victimPort = RandomSocket.nextPort()
-      val serverConfig = makeServerConfig()
       val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
 
       val victim = new UdpEchoServer(victimPort)
       victim.start()
 
       val script = List("abc", "is as easy as", "123")
-      var targetHost = new TargetHost("", "127.0.0.1", victimPort)
       script.foreach { request =>
-        val parrotRequest = new ParrotRequest(targetHost, rawLine = request)
+        val parrotRequest = new ParrotRequest(rawLine = request)
         val response: String = transport.sendRequest(parrotRequest).get()
 
-        response mustEqual "echo<" + request + ">"
+        response must be("echo<" + request + ">")
       }
 
       transport.shutdown()
@@ -65,37 +86,33 @@ class ParrotUdpTransportSpec extends SpecificationWithJUnit {
     }
 
     "timeout if the service does not respond quickly enough" in {
-      val victimPort = RandomSocket.nextPort()
-      val serverConfig = makeServerConfig()
       val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
-      transport.asInstanceOf[ParrotUdpTransport[ParrotRequest, String]].requestTimeout = Some(100.milliseconds)
+      transport.asInstanceOf[ParrotUdpTransport[String]].requestTimeout = Some(100.milliseconds)
 
       val victim = new UdpEchoServer(victimPort, true)
       victim.start()
 
-      var targetHost = new TargetHost("", "localhost", victimPort)
-      val parrotRequest = new ParrotRequest(targetHost, rawLine = "data")
+      val parrotRequest = new ParrotRequest(rawLine = "data")
 
       Stats.getCounter("udp_request_timeout").reset()
 
       val result: Try[String] = transport.sendRequest(parrotRequest).get(1.minute)
-      result() must throwA[RequestTimeoutException]
-      Stats.getCounter("udp_request_timeout")() must eventually(be(1L))
+      evaluating { result() } must produce[RequestTimeoutException]
+      eventually {
+        Stats.getCounter("udp_request_timeout")() must be(1L)
+      }
 
       transport.shutdown()
       victim.stop()
     }
 
     "work in the context of feeder and server" in {
-      val victimPort = RandomSocket.nextPort()
-      val serverConfig = makeServerConfig()
 
-      RecordProcessorFactory.registerProcessor("default", new RecordProcessor {
+      serverConfig.loadTestInstance = Some(new RecordProcessor {
         val service = serverConfig.service.get
-        def processLines(job: ParrotJob, lines: Seq[String]) {
+        def processLines(lines: Seq[String]) {
           lines flatMap { line =>
-            val target = job.victims.get(0)
-            Some(service(new ParrotRequest(target, None, Nil, null, line)))
+            Some(service(new ParrotRequest(None, Nil, null, line)))
           }
         }
       })
@@ -110,35 +127,43 @@ class ParrotUdpTransportSpec extends SpecificationWithJUnit {
       val server: ParrotServer[ParrotRequest, String] = new ParrotServerImpl(serverConfig)
       server.start()
 
-      val feederConfig = makeFeederConfig(serverConfig, victimPort)
+      val feederConfig = makeFeederConfig(serverConfig)
       feederConfig.logSource = Some(new InMemoryLog(requestStrings))
 
       val feeder = new ParrotFeeder(feederConfig)
       feeder.start()
 
       try {
-        { transport.asInstanceOf[ParrotUdpTransport[ParrotRequest, String]].allRequests.get } must
-          eventually(be(requestStrings.size))
+        {
+          eventually(timeout(Span(5, Seconds)), interval(Span(500, Millis))) {
+            transport.asInstanceOf[ParrotUdpTransport[String]].allRequests.get must
+              be(requestStrings.size)
+          }
+        }
       } finally {
-        feeder.shutdown() // this will implicitly shut down the server as well
+        // The Feeder will shut down the Server for us
+        feeder.shutdown()
       }
     }
   }
 
-  def makeServerConfig() = {
+  def makeServerConfig(victimPort: Int) = {
     val result = new Eval().apply[ParrotServerConfig[ParrotRequest, String]](
-      TempFile.fromResourcePath("/test-udp.scala")
-    )
+      TempFile.fromResourcePath("/test-udp.scala"))
+    result.victim = result.HostPortListVictim("localhost:" + victimPort)
     result.parrotPort = RandomSocket().getPort
     result.thriftServer = Some(new ThriftServerImpl) // ParrotServer throws otherwise
+    result.transport = Some(new ParrotUdpTransport[String](result) {
+      val requestEncoder = Some(new StringEncoder(CharsetUtil.UTF_8))
+      val responseDecoder = Some(new StringDecoder(CharsetUtil.UTF_8))
+    })
+    result.queue = Some(new RequestQueue(result))
     result
   }
 
-  def makeFeederConfig(serverConfig: ParrotServerConfig[ParrotRequest, String], victimPort: Int) = {
+  def makeFeederConfig(serverConfig: ParrotServerConfig[ParrotRequest, String]) = {
     val result = new Eval().apply[ParrotFeederConfig](TempFile.fromResourcePath("/test-feeder.scala"))
     result.parrotPort = serverConfig.parrotPort
-    result.victimHosts = List("localhost")
-    result.victimPort = victimPort
     result.requestRate = 1000
     result
   }

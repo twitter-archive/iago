@@ -15,57 +15,63 @@ limitations under the License.
 */
 package com.twitter.parrot.util
 
-import com.twitter.util.Return
-import org.specs.SpecificationWithJUnit
 
-class UriParserSpec extends SpecificationWithJUnit {
+import org.junit.runner.RunWith
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+
+import com.twitter.util.Return
+
+@RunWith(classOf[JUnitRunner])
+class UriParserSpec extends WordSpec with MustMatchers {
   "UriParser" should {
     "extract /" in {
-      UriParser("/") mustEqual Return(Uri("/", Nil))
+      UriParser("/") must be === Return(Uri("/", Nil))
     }
     "extract / with args" in {
-      UriParser("/?foo") mustEqual Return(Uri("/", Seq("foo" -> "")))
+      UriParser("/?foo") must be(Return(Uri("/", Seq("foo" -> ""))))
     }
     "extract non-toplevel" in {
-      UriParser("foo") mustEqual Return(Uri("foo", Nil))
+      UriParser("foo") must be(Return(Uri("foo", Nil)))
     }
     "extract non-toplevel with args" in {
-      UriParser("foo?bar=baz") mustEqual Return(Uri("foo", Seq("bar" -> "baz")))
+      UriParser("foo?bar=baz") must be(Return(Uri("foo", Seq("bar" -> "baz"))))
     }
     "extract long path" in {
-      UriParser("/foo/bar/baz.html") mustEqual Return(Uri("/foo/bar/baz.html", Nil))
+      UriParser("/foo/bar/baz.html") must be(Return(Uri("/foo/bar/baz.html", Nil)))
     }
     "extract long path with args" in {
       val uri = UriParser("/foo/bar/baz.html?foo&bar=&foo=bar")
-      uri mustEqual Return(Uri("/foo/bar/baz.html", Seq("foo" -> "", "bar" -> "", "foo" -> "bar")))
+      uri must be(Return(Uri("/foo/bar/baz.html", Seq("foo" -> "", "bar" -> "", "foo" -> "bar"))))
     }
     "handle for empty input" in {
-      UriParser("") mustEqual Return(Uri("", Nil))
+      UriParser("") must be(Return(Uri("", Nil)))
     }
     "handle for null input" in {
-      UriParser(null)() must throwA[Throwable]
+      evaluating {UriParser(null)()} must produce [Throwable]
     }
     "handle bad input" in {
-      UriParser("@)(#*&$@#)")() must throwA[Throwable]
+      evaluating {UriParser("@)(#*&$@#)")()} must produce [Throwable]
     }
     "strip oauth by default" in {
-      UriParser("/?oauth_foo=bar") mustEqual Return(Uri("/", Nil))
+      UriParser("/?oauth_foo=bar") must be(Return(Uri("/", Nil)))
     }
     "don't strip oauth if asked not to" in {
-       UriParser("/?oauth_foo=bar", false) mustEqual Return(Uri("/", Seq("oauth_foo" -> "bar")))
+       UriParser("/?oauth_foo=bar", false) must be(Return(Uri("/", Seq("oauth_foo" -> "bar"))))
     }
   }
 
   "Uri" should {
     "handle Nil args" in {
       val uri = Uri("/foo", Nil)
-      uri.queryString mustEqual ""
-      uri.toString mustEqual "/foo"
+      uri.queryString must be("")
+      uri.toString must be("/foo")
     }
     "handle args" in {
       val uri = Uri("/foo", Seq("foo" -> "", "bar" -> "", "foo" -> "bar"))
-      uri.queryString mustEqual ("foo=&bar=&foo=bar")
-      uri.toString mustEqual "/foo?foo=&bar=&foo=bar"
+      uri.queryString must be("foo=&bar=&foo=bar")
+      uri.toString must be("/foo?foo=&bar=&foo=bar")
     }
   }
 }

@@ -20,11 +20,12 @@ import com.twitter.finagle.Service
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.finagle.thrift.{ThriftClientFramedCodec, ThriftClientRequest}
-import com.twitter.parrot.thrift.{ParrotStatus, ParrotJob, ParrotJobRef, ParrotServerService}
+import com.twitter.logging.Logger
+import com.twitter.parrot.thrift.{ParrotStatus, ParrotServerService}
 import com.twitter.parrot.feeder.FeedConsumer
 import com.twitter.util.{Duration, Future, Return, Throw}
 import java.net.InetSocketAddress
-import java.util.logging.Logger
+import java.util.logging.{Logger => JLogger}
 import org.apache.thrift.protocol.TBinaryProtocol
 
 class InternalCounter(var success: Int = 0, var failure: Int = 0) {
@@ -42,33 +43,43 @@ class RemoteParrot(val name: String,
                    var queueDepth: Double = 0.0,
                    var targetDepth: Double = 0.0)
 {
-  private[this] var jobRef: ParrotJobRef = null
+  private[this] val log = Logger(getClass.getName)
   private[this] var consumer: FeedConsumer = null
 
   private[this] val (service, client) = connect(host, port)
 
-  def createJob(job: ParrotJob): ParrotJobRef = {
-    if (jobRef == null) {
-      jobRef = waitFor(client.createJob(job))
-    }
-    jobRef
-  }
-
   def createConsumer() {
+    log.trace("RemoteParrot: creating consumer")
     consumer = new FeedConsumer(this)
     consumer.start()
+    log.trace("RemoteParrot: consumer created")
   }
+
+  def hasCapacity = consumer.queue.remainingCapacity > 0
 
   def addRequest(batch: List[String]) {
     consumer.addRequest(batch)
   }
 
-  def adjustRateForJob(name: String, adjustment: Int) {
-    waitFor(client.adjustRateForJob(name, adjustment))
+  def setRate(newRate: Int) {
+    log.trace("RemoteParrot: setting rate %d", newRate)
+    waitFor(client.setRate(newRate))
+    log.trace("RemoteParrot: rate set")
   }
 
   def sendRequest(batch: java.util.List[String]): ParrotStatus = {
-    waitFor(client.sendRequest(jobRef, batch))
+    log.trace("parrot[%s:%d] sending requests of size=%d to the server",
+      host,
+      port,
+      batch.size
+    )
+    val result = waitFor(client.sendRequest(batch))
+    log.trace("parrot[%s:%d] done sending requests of size=%d to the server",
+      host,
+      port,
+      batch.size
+    )
+    result
   }
 
   def getStatus: ParrotStatus = {
@@ -85,9 +96,8 @@ class RemoteParrot(val name: String,
 
   def shutdown() {
     consumer.isShutdown.set(true)
-    println("shutting down client")
     waitFor(client.shutdown())
-    service.release
+    service.close()
   }
 
   def isConnected() = {
@@ -113,7 +123,7 @@ class RemoteParrot(val name: String,
       .retries(2)
 // Enable only for debugging
 //      .reportTo(new OstrichStatsReceiver)
-//      .logger(Logger.getLogger("thrift"))
+//      .logger(JLogger.getLogger("thrift"))
       .build()
 
     val client = new ParrotServerService.ServiceToClient(service, new TBinaryProtocol.Factory())

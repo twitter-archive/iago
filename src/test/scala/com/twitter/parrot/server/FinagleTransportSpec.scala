@@ -15,29 +15,35 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
+import org.jboss.netty.handler.codec.http.HttpResponse
+import org.junit.runner.RunWith
+import org.scalatest.OneInstancePerTest
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.thrift.TargetHost
 import com.twitter.parrot.integration.HttpServer
 import com.twitter.util.RandomSocket
-import org.jboss.netty.handler.codec.http.HttpResponse
-import org.specs.SpecificationWithJUnit
 
-class FinagleTransportSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class FinagleTransportSpec extends WordSpec with MustMatchers with OneInstancePerTest {
   "FinagleTransport" should {
-
-    val config = new ParrotServerConfig[ParrotRequest, HttpResponse] { }
 
     // local http server
     val victimPort = RandomSocket.nextPort()
     HttpServer.serve(victimPort)
 
+    val config = new ParrotServerConfig[ParrotRequest, HttpResponse] {
+      victim = HostPortListVictim("localhost:" + victimPort)
+    }
+
     "allow us to send http requests to web servers" in {
       val transport = new FinagleTransport(config)
-      val target = new TargetHost("http", "localhost", victimPort)
-      val request = new ParrotRequest(target)
+      val request = new ParrotRequest
       val future = transport.sendRequest(request)
-      future.get() must notBeNull
-      HttpServer.getAndResetRequests() must_== 1
+      future.get() must not be null
+      HttpServer.getAndResetRequests() must be(1)
     }
 
     // TODO: Add an SSL HTTP server so we can catch problems there
@@ -46,12 +52,10 @@ class FinagleTransportSpec extends SpecificationWithJUnit {
       // factories are only cached if needed
       config.reuseConnections = false
       val transport = new FinagleTransport(config)
-      val target = new TargetHost("http", "localhost", victimPort)
-      val request = new ParrotRequest(target)
+      val request = new ParrotRequest
       transport.sendRequest(request).get()
       transport.sendRequest(request).get()
-      transport.factories.size must_== 1
-      HttpServer.getAndResetRequests() must_== 2
+      HttpServer.getAndResetRequests() must be(2)
     }
   }
 }

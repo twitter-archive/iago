@@ -20,16 +20,16 @@ import com.twitter.parrot.util.ParrotClusterImpl
 import com.twitter.logging.Logger
 
 object Adjustor {
-  def adjust(config: ParrotCommonConfig, jobName: String, adjustment: Int) {
+  def adjust(config: ParrotCommonConfig, jobName: String, newRate: Int) {
     val log = Logger.get(getClass)
     val cluster = new ParrotClusterImpl(Some(config))
     val parrots = cluster.connectParrots()
     if (parrots.isEmpty) {
-      log.error("Empty Parrots list -- do we know where to find Parrot Servers?")
+      log.error("Empty Parrots list: do you have access to Zookeeper? (ie, running in SMF1)")
     }
     else {
       parrots foreach { parrot =>
-        parrot.adjustRateForJob(jobName, adjustment)
+        parrot.setRate(newRate)
       }
     }
   }

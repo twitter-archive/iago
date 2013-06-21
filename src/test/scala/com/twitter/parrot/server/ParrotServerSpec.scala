@@ -15,43 +15,32 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import com.twitter.io.TempFile
-import com.twitter.logging.Logger
-import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.processor.{SimpleRecordProcessor, RecordProcessorFactory}
-import com.twitter.parrot.thrift._
-import com.twitter.util._
-import com.twitter.conversions.time._
 import java.util.ArrayList
+import java.util.concurrent.TimeUnit
 import org.jboss.netty.handler.codec.http.HttpResponse
-import org.specs.SpecificationWithJUnit
+import org.junit.runner.RunWith
+import org.scalatest.OneInstancePerTest
+import org.scalatest.WordSpec
+import org.scalatest.concurrent.Eventually
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+import com.twitter.logging.Logger
+import com.twitter.parrot.processor.SimpleRecordProcessor
+import com.twitter.parrot.thrift.ParrotState
+import com.twitter.util.Duration
+import com.twitter.util.Future
+import com.twitter.util.Return
+import com.twitter.util.Throw
+import org.scalatest.time.Span
+import org.scalatest.time.Seconds
 
-class ParrotServerSpec extends SpecificationWithJUnit {
+@RunWith(classOf[JUnitRunner])
+class ParrotServerSpec extends WordSpec with MustMatchers with OneInstancePerTest with Eventually with ServerFixture {
   val log = Logger.get(getClass.getName)
-  val config = {
-    val eval = new Eval
-    val configFile = TempFile.fromResourcePath("/test-server.scala")
-    eval[ParrotServerConfig[ParrotRequest, HttpResponse]](configFile)
-  }
-  val transport = config.transport match {
-    case Some(dt: DumbTransport) => dt
-    case _ => throw new Exception("Wrong ParrotTransport, test will fail")
-  }
 
   val server: ParrotServer[ParrotRequest, HttpResponse] = new ParrotServerImpl(config)
+  config.loadTestInstance = Some(new SimpleRecordProcessor(config.service.get, config))
   server.start()
-
-  RecordProcessorFactory.registerProcessor("default", new SimpleRecordProcessor(config.service.get, config))
-
-  def makeJob() = {
-    val victims = new ArrayList[TargetHost]()
-    victims.add(new TargetHost("http", "localhost", 0))
-
-    val result = new ParrotJob()
-    result.setVictims(victims)
-    result.setName("ParrotServerSpec")
-    result.setArrivalRate(1)
-  }
 
   "ParrotServer" should {
     val emptyLines = new ArrayList[String]()
@@ -59,68 +48,41 @@ class ParrotServerSpec extends SpecificationWithJUnit {
     defaultLines.add("/search.json?q=%23playerofseason&since_id=68317051210563584&rpp=30")
 
     def resolve[A](future: Future[A]): A = {
-      future.get(1.second) match {
+      future.get(Duration(1000, TimeUnit.MILLISECONDS)) match {
         case Return(res) => res
-        case Throw(t) => throw t
+        case Throw(t)    => throw t
       }
     }
 
-    val defaultJob = makeJob()
-    val defaultJobRef = resolve(server.createJob(defaultJob))
-
-    "create its first job with id 0" in {
-      defaultJobRef.getJobId must_== 0
-    }
-
     "not try to do anything with an empty list" in {
-      val response = resolve(server.sendRequest(defaultJobRef, emptyLines))
-      response.getLinesProcessed must_== 0
+      val response = resolve(server.sendRequest(emptyLines))
+      response.getLinesProcessed must be(0)
     }
 
     "allow us to send a single, valid request" in {
-      val response = resolve(server.sendRequest(defaultJobRef, defaultLines))
-      response.getLinesProcessed must_== 1
-      transport.sent must eventually(be_==(1))
-    }
-
-    "support multiple jobs" in {
-      val response0 = resolve(server.sendRequest(defaultJobRef, defaultLines))
-      val response1 = resolve(server.sendRequest(defaultJobRef, defaultLines))
-
-      response0.getLinesProcessed must_== 1
-      response1.getLinesProcessed must_== 1
-
-      transport.sent must eventually(be_==(2))
-    }
-
-    "not support jobs that don't exist" in {
-      val response0 = resolve(server.sendRequest(defaultJobRef, defaultLines))
-      val response1 = resolve(server.sendRequest(new ParrotJobRef(1), defaultLines))
-      response0.getLinesProcessed must_== 1
-      response1.getLinesProcessed must_== 0
-      response1.getStatus must_== ParrotState.UNKNOWN
-
-      transport.sent must eventually(be_==(1))
+      val response = resolve(server.sendRequest(defaultLines))
+      response.getLinesProcessed must be(1)
+      eventually { transport.sent must be(1) }
     }
 
     "support being paused and resumed" in {
       server.pause()
-
-      val response = resolve(server.sendRequest(defaultJobRef, defaultLines))
-      response.status must_== ParrotState.PAUSED
-      transport.sent must_== 0
+      val response = resolve(server.sendRequest(defaultLines))
+      response.status must be(ParrotState.PAUSED)
+      transport.sent must be(0)
 
       server.resume()
-
-      transport.sent must eventually(be_==(1))
+      eventually(timeout(Span(2, Seconds))) {
+        transport.sent must be(1)
+      }
     }
 
     "support being shutdown" in {
       server.shutdown()
 
-      val response = resolve(server.sendRequest(defaultJobRef, defaultLines))
-      response.status must_== ParrotState.SHUTDOWN
-      transport.sent must_== 0
+      val response = resolve(server.sendRequest(defaultLines))
+      response.status must be(ParrotState.SHUTDOWN)
+      // transport.sent must be(1)
     }
   }
 }

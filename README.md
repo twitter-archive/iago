@@ -19,13 +19,19 @@
   - <a href="#Java Thrift Example">Java Thrift Example</a>
   - <a href="#Code Annotations for the Examples">Code Annotations for the Examples</a>
 * <a href="#Configuring Your Test">Configuring Your Test</a>
+	- [Specifying Victims](#Specifying_Victims)
+	- [Extension Point Parameters](#extension_point_parameters)
+	- [Sending Large Messages](#sending_large_messages)
+* [Metrics](#metrics)
+* [What Files Are Created?](#artifacts)
+* [ChangeLog](#ChangeLog)
 * <a href="#Contributing">Contributing to Iago</a>
 
 <a name="Iago Quick Start"></a>
 
 ## Iago Quick Start
 
-NOTE: This repo has only recently been made public and our velocity is high at the moment. Please join [iago-users@googlegroups.com](https://groups.google.com/d/forum/iago-users) for updates and to ask questions.
+Please join [iago-users@googlegroups.com](https://groups.google.com/d/forum/iago-users) for updates and to ask questions.
 
 If you are already familiar with the Iago Load Generation tool, follow these steps to get started; otherwise, start with the <a href="http://twitter.github.com/iago/">Iago Overview</a> and perhaps <a href="http://twitter.github.com/iago/philosophy.html">Iago Philosophy</a>, also known as "Why Iago?". For questions, please contact [iago-users@googlegroups.com](https://groups.google.com/d/forum/iago-users).
 
@@ -126,9 +132,15 @@ In some cases, transactions do not exist. For example, transactions for your ser
 
 ## Iago Architecture Overview
 
-Iago consists of one or more Iago _feeders_, which reads your transaction source, and one or more Iago servers, which format and deliver requests to the service you want to test. The feeder contains a `Poller` object, which is responsible for guaranteeing one minute's worth of transactions in the pipeline to the Iago servers. Metrics are available in logs, and we expect future enhancements to support parsing and visualizing this data.
+Iago consists of _feeders_ and _servers_. A _feeder_ reads your transaction source. A _server_ formats and delivers requests to the service you want to test. The feeder contains a `Poller` object, which is responsible for guaranteeing _cachedSeconds_ worth of transactions in the pipeline to the Iago servers.
+
+Metrics are available in logs and in  graphs as described in [Metrics](#metrics).
 
 The Iago servers generate requests to your service. Together, all Iago servers generate the specified number of requests per minute. A Iago server's `RecordProcessor` object executes your service and maps the transaction to the format required by your service.
+
+The feeder stops sending data when it runs out of data (reuseFile = false) or the time limit (duration) expires. The feeder waits for 10 seconds or until all of its connected servers are idle, whichever comes first. Then it sends all connected servers a shutdown message. Since the default polling interval is a second, your service has on the average about half a second from the time it receives the last message from the feeder to process all its responses from the server.
+
+The feeder queries its servers to see how much data they need to maintain cachedSeconds worth of data. That is how we can have many feeders that need not coordinate with each other.
 
 [Top](#Top)
 
@@ -356,7 +368,6 @@ new ParrotLauncherConfig {
   responseType = "Array[Byte]"
   transport = "ThriftTransport"
   loadTest = "new EchoLoadTest(service.get)"
-  parser = "thrift"
 }
 ```
 
@@ -372,90 +383,112 @@ You can specify any of the following parameters:
 <th>Required or<br/>Default Value</th>
 </tr>
 </thead>
+
 <tr>
-    <td><code>jobName</code></td>
-    <td><p>A string value that specifies the the name of your test.</p>
-    <p><b>Example: </b><code>jobName = "testing_tasty_new_feature"</code></p></td>
-    <td><b>Required</b></td>
+    <td><code>createDistribution</code></td>
+    <td><p>You can use this field to create your own distribution rate, instead of having a constant flow. You will need to create a subclass of RequestDistribution and import it.</p>
+    <p><b>Example: </b><pre>createDistribution = """createDistribution = {
+    rate => new MyDistribution(rate)
+}"""</pre></p></td>
+    <td><i>""</i></td>
 </tr>
-<tr>
-    <td><code>log</code></td>
-    <td><p>A string value that specifies the complete path to the log you want Iago to replay. The log should be on your local file system. The log should have at least 1000 items or you should change the <code>reuseFile</code> parameter.</p>
-    <p><b>Example: </b><code>log = "logs/yesterday.log"</code></p></td>
-    <td><b>Required</b></td>
-</tr>
-<tr>
-    <td><code>victims</code></td>
-    <td><p>A string of comma-separated values that specify the hosts on which to execute the load test.</p>
-    <p><b>Example: </b><code>victims = "www1,www2"</code></p></td>
-    <td><b>Required</b></td>
-</tr>
-<tr>
-    <td><code>port</code></td>
-    <td><p>An integer value that specifies the port on which to deliver requests to the <code>victims</code>.</p>
-    <p><b>Example: </b><code>port = 9000</code></p></td>
-    <td><b>Required</b></td>
-</tr>
-<tr>
-    <td><code>distDir</code></td>
-    <td><p>The subdirectory of your project you're running from, if any.</p>
-    <p><b>Example: </b><code>distDir = "target"</code></p></td>
-    <td><i>"."</i></td>
-</tr>
+
 <tr>
     <td><code>customLogSource</code></td>
     <td><p>A string with Scala code that will be put into the Feeder config</p>
     <p><b>Example: </b><code>customLogSource = "FILL IN HERE"</code></p></td>
     <td><i>""</i></td>
 </tr>
+
 <tr>
-    <td><code>scheme</code></td>
-    <td><p>A string value that specifies the scheme portion of a URI.</p>
-    <p><b>Example: </b><code>scheme = "http"</code></p></td>
-    <td><code>http</code></td>
+    <td><code>distDir</code></td>
+    <td><p>The subdirectory of your project you're running from, if any.</p>
+    <p><b>Example: </b><code>distDir = "target"</code></p></td>
+    <td><i>"."</i></td>
 </tr>
+
 <tr>
-    <td><code>header</code></td>
-    <td><p>A string value that specifies the HTTP Host header.</p>
-    <p><b>Example: </b><code>header = "api.yourdomain.com"</code></p></td>
-    <td><code>""</code></td>
+    <td><code>doConfirm</code></td>
+    <td><p>If set to false, you will not be asked to confirm the run.</p>
+    <p><b>Example: </b><code>doConfirm = false</code></p></td>
+    <td><i>true</i></td>
 </tr>
+
 <tr>
     <td><code>duration</code></td>
     <td><p>An integer value that specifies the time to run the test in <code>timeUnit</code> units.</p>
     <p><b>Example: </b><code>duration = 5</code></p></td>
     <td><code>&nbsp;</code></td>
 </tr>
+
 <tr>
-    <td><code>timeUnit</code></td>
-    <td><p>A string value that specifies time unit of the <code>duration</code>. It contains one of the following values:
-        <ul>
-            <li> "MINUTES"
-            <li> "HOURS"
-            <li> "DAYS"
-        </ul></p>
-    <p><b>Example: </b><code>timeUnit = "MINUTES"</code></p></td>
-    <td><code>&nbsp;</code></td>
+    <td><code>header</code></td>
+    <td><p>A string value that specifies the HTTP Host header.</p>
+    <p><b>Example: </b><code>header = "api.yourdomain.com"</code></p></td>
+    <td><code>""</code></td>
+</tr>
+
+<tr>
+    <td><code>hostConnectionCoresize</code></td>
+    <td><p>Number of connections per host that will be kept open, once established, until they hit max idle time or max lifetime</p>
+    <p><b>Example: </b><code>hostConnectionCoresize = 1</code></p></td>
+    <td><i>1</i></td>
+</tr>
+
+<tr>
+    <td><code>hostConnectionIdleTimeInMs</code></td>
+    <td><p>For any connection > coreSize, maximum amount of time, in milliseconds, between requests we allow before shutting down the connection</p>
+    <p><b>Example: </b><code>hostConnectionIdleTimeInMs = 50000</code></p></td>
+    <td><i>60000</i></td>
+</tr>
+
+<tr>
+    <td><code>hostConnectionLimit</code></td>
+    <td><p>Limit on the number of connections per host</p>
+    <p><b>Example: </b><code>hostConnectionLimit = 4</code></p></td>
+    <td><i>Integer.MAX_VALUE</i></td>
 </tr>
 <tr>
-    <td><code>maxRequests</code></td>
-    <td><p>An integer value that specifies the total number of requests to submit to your service.</p>
-    <p><b>Example: </b><code>maxRequests = 10000</code></p></td>
-    <td><code>1000</code></td>
+    <td><code>hostConnectionMaxIdleTimeInMs</code></td>
+    <td><p>The maximum time in milliseconds that any connection (including within core size) can stay idle before shutdown</p>
+    <p><b>Example: </b><code>hostConnectionMaxIdleTimeInMs = 500000</code></p></td>
+    <td><i>300000</i></td>
 </tr>
 <tr>
-    <td><code>reuseFile</code></td>
-    <td><p>A boolean value that specifies whether or not to stop the test when the input log has been read through. Setting this value to true will result in Iago starting back at the beginning of the log when it exhausts the contents. If this is true, your log file should at least be 1,000 lines or more.</p>
-    <p><b>Example: </b><code>reuseFile = false</code></p></td>
-    <td><code>true</code></td>
+    <td><code>hostConnectionMaxLifeTimeInMs</code></td>
+    <td><p>The maximum time in milliseconds that a connection will be kept open</p>
+    <p><b>Example: </b><code>hostConnectionMaxLifeTimeInMs = 10000</code></p></td>
+    <td><i>Integer.MAX_VALUE</i></td>
 </tr>
+
 <tr>
-    <td><code>requestRate</code></td>
-    <td><p>An integer value that specifies the number of requests per second to submit to your service.</p>
-    <p><b>Example: </b><code>requestRate = 10</code></p>
-    <p>Note: if using multiple server instances, requestRate is per-instance, not aggregate.</p></td>
-    <td><code>1</code></td>
+  <td><code>jobName</code></td>
+  <td><p>A string value that specifies the the name of your test. This is used for two things:
+      <ol>
+	<li>if the parrot feeder is configured to find its servers using zookeeper, and/or </li>
+	<li>when using mesos it is part of the job names generated. A job name of "foo" results in mesos job sharding groups "parrot_server_foo" and "parrot_feeder_foo".</li>
+      </ol>
+    </p>
+    <p><b>Example: </b><code>jobName = "testing_tasty_new_feature"</code></p></td>
+    <td><b>Required</b></td>
 </tr>
+
+<tr>
+    <td><code>localMode</code></td>
+    <td><p>Should Iago attempt to run locally or to use the cluster via mesos?</p>
+    <p><b>Example: </b><code>localMode = true</code></p></td>
+    <td><i>false</i></td>
+</tr>
+
+<tr>
+    <td><code>log</code></td>
+    <td><p>A string value that specifies the complete path to the log you want Iago to replay. If localMode=true then the log should be on your local file system. The log should have at least 1000 items or you should change the <code>reuseFile</code> parameter.</p>
+    <p><b>Example: </b><code>log = "logs/yesterday.log"</code></p>
+    <p><p>If localMode=false (the default), then the parrot launcher will copy your log file when attempts to make a package for mesos. You can avoid this, and should, by storing your log file in HDFS.<p><b>Example: </b><code>log = "hdfs://hadoop-example.com/yesterday.log"</code></p></td>
+    <td><b>Required</b></td>
+    <td><b>Required</b></td>
+</tr>
+
 <tr>
     <td><code>loggers</code></td>
     <td><p>A List of LoggerFactories; allows you to define the type and level of logging you want</p>
@@ -472,107 +505,163 @@ new ParrotLauncherConfig {
 } </pre></td>
     <td><i>Nil</i></td>
 </tr>
+
 <tr>
-    <td><code>numFeederInstances</code></td>
-    <td><p>Will bring up the specified number of feeder instances</p>
-    <p><b>Example: </b><code>numFeederInstances = 2</code></p></td>
-    <td>1</td>
-</tr>
-<tr>
-    <td><code>numInstances</code></td>
-    <td><p>An integer value that specifies the number of Iago servers concurrently making requests to your service.</p>
-    <p><b>Example: </b><code>numInstances = 2</code></p></td>
-    <td><code>1</code></td>
-</tr>
-<tr>
-    <td><code>parser</code></td>
-    <td><p>A string value that specifies how the request is to be interpreted. It is one of the following values:<br/>
-        <ul>
-            <li> "http"
-            <li> "thrift"
-        </ul></p>
-    <p><b>Example: </b><code>parser = "thrift"</code></p></td>
-    <td><code>http</code></td>
-</tr>
-<tr>
-    <td><code>verboseCmd</code></td>
-    <td><p>A boolean value that specifies the level of feedback from Iago. A value of <code>true</code> specifies maximum feedback.</p>
-    <p><b>Example: </b><code>verboseCmd = true</code></p></td>
-    <td><code>false</code></td>
-</tr>
-<tr>
-    <td><code>reuseConnections</code></td>
-    <td><p>A boolean value that specifies whether connections to your service's hosts can be reused. A value of <code>true</code> enables reuse. Setting this to false greatly increases your use of ephemeral ports and can result in port exhaustion, causing you to achieve a lower rate than requested</p>
-    <p><b>Example: </b><code>reuseConnections = false</code></p></td>
-    <td><code>true</code></td>
-</tr>
-<tr>
-    <td><code>doConfirm</code></td>
-    <td><p>If set to false, you will not be asked to confirm the run.</p>
-    <p><b>Example: </b><code>doConfirm = false</code></p></td>
-    <td><i>true</i></td>
-</tr>
-<tr>
-    <td><code>hostConnectionCoresize</code></td>
-    <td><p>Number of connections per host that will be kept open, once established, until they hit max idle time or max lifetime</p>
-    <p><b>Example: </b><code>hostConnectionCoresize = 1</code></p></td>
-    <td><i>1</i></td>
-</tr>
-<tr>
-    <td><code>hostConnectionLimit</code></td>
-    <td><p>Limit on the number of connections per host</p>
-    <p><b>Example: </b><code>hostConnectionLimit = 4</code></p></td>
-    <td><i>Integer.MAX_VALUE</i></td>
-</tr>
-<tr>
-    <td><code>hostConnectionIdleTimeInMs</code></td>
-    <td><p>For any connection > coreSize, maximum amount of time, in milliseconds, between requests we allow before shutting down the connection</p>
-    <p><b>Example: </b><code>hostConnectionIdleTimeInMs = 50000</code></p></td>
-    <td><i>60000</i></td>
+    <td><code>maxRequests</code></td>
+    <td><p>An integer value that specifies the total number of requests to submit to your service.</p>
+    <p><b>Example: </b><code>maxRequests = 10000</code></p></td>
+    <td><code>1000</code></td>
 </tr>
 
 <tr>
-    <td><code>hostConnectionMaxIdleTimeInMs</code></td>
-    <td><p>The maximum time in milliseconds that any connection (including within core size) can stay idle before shutdown</p>
-    <p><b>Example: </b><code>hostConnectionMaxIdleTimeInMs = 500000</code></p></td>
-    <td><i>300000</i></td>
+    <td><code>requestRate</code></td>
+    <td><p>An integer value that specifies the number of requests per second to submit to your service.</p>
+    <p><b>Example: </b><code>requestRate = 10</code></p>
+    <p>Note: if using multiple server instances, requestRate is per-instance, not aggregate.</p></td>
+    <td><code>1</code></td>
 </tr>
+
 <tr>
-    <td><code>hostConnectionMaxLifeTimeInMs</code></td>
-    <td><p>The maximum time in milliseconds that a connection will be kept open</p>
-    <p><b>Example: </b><code>hostConnectionMaxLifeTimeInMs = 10000</code></p></td>
-    <td><i>Integer.MAX_VALUE</i></td>
+    <td><code>reuseFile</code></td>
+    <td><p>A boolean value that specifies whether or not to stop the test when the input log has been read through. Setting this value to true will result in Iago starting back at the beginning of the log when it exhausts the contents. If this is true, your log file should at least be 1,000 lines or more.</p>
+    <p><b>Example: </b><code>reuseFile = false</code></p></td>
+    <td><code>true</code></td>
 </tr>
+
 <tr>
-    <td><code>maxPerHost</code></td>
-    <td><p>Maximum number of parrot_server instances per mesos box</p>
-    <p><b>Example: </b><code>maxPerHost = 3</code></p></td>
-    <td><i>1</i></td>
+    <td><code>scheme</code></td>
+    <td><p>A string value that specifies the scheme portion of a URI.</p>
+    <p><b>Example: </b><code>scheme = "http"</code></p></td>
+    <td><code>http</code></td>
 </tr>
+
 <tr>
     <td><code>serverXmx</code></td>
     <td><p>Defines heap size. Suggested not to be higher than 8 GB (will cause issues scheduling)</p>
     <p><b>Example: </b><code>serverXmx = 5000</code></p></td>
     <td><i>4000</i></td>
 </tr>
+
+<tr>
+  <td><code>requestTimeoutInMs</code></td>
+  <td>
+    <p>(From the Finagle Documentation) The request timeout is the time given to a *single* request (if there are retries, they each get a fresh request timeout). The timeout is applied only after a connection has been acquired. That is: it is applied to the interval between the dispatch of the request and the receipt of the response.</p>
+    <p>Note that parrot servers will not shut down until every response from every victim has come in. If you've modified your record processor to write test summaries this can be an issue.</p>
+    <p><b>Example: </b><code>requestTimeoutInMs = 3000 // if the victim doesn't respond in three seconds, stop waiting</code></p>
+  </td>
+  <td><code>Integer.MAX_VALUE</code></td>
+</tr>
+
+<tr>
+    <td><code>reuseConnections</code></td>
+    <td><p>A boolean value that specifies whether connections to your service's hosts can be reused. A value of <code>true</code> enables reuse. Setting this to false greatly increases your use of ephemeral ports and can result in port exhaustion, causing you to achieve a lower rate than requested</p>
+      <p>This is only implemented for FinagleTransport.</p>
+    <p><b>Example: </b><code>reuseConnections = false</code></p></td>
+    <td><code>true</code></td>
+</tr>
+
 <tr>
     <td><code>thriftClientId</code></td>
     <td><p>If you are making Thrift requests, your clientId</p>
     <p><b>Example: </b><code>thriftClientId = "projectname.staging"</code></p></td>
     <td><i>""</i></td>
 </tr>
+
 <tr>
-    <td><code>createDistribution</code></td>
-    <td><p>You can use this field to create your own distribution rate, instead of having a constant flow. You will need to create a subclass of RequestDistribution and import it.</p>
-    <p><b>Example: </b><pre>createDistribution = """createDistribution = {
-    rate => new MyDistribution(rate)
-}"""</pre></p></td>
-    <td><i>""</i></td>
+    <td><code>timeUnit</code></td>
+    <td><p>A string value that specifies time unit of the <code>duration</code>. It contains one of the following values:
+        <ul>
+            <li> "MINUTES"
+            <li> "HOURS"
+            <li> "DAYS"
+        </ul></p>
+    <p><b>Example: </b><code>timeUnit = "MINUTES"</code></p></td>
+    <td><code>&nbsp;</code></td>
+</tr>
+
+
+<tr>
+    <td><code>traceLevel</code></td>
+    <td><p>A <code>com.twitter.logging.Level</code> subclass. Controls the level of "debug logging" for servers and feeders.</p>
+    <p><b>Example:</b>
+<pre>import com.twitter.logging.Level
+ &hellip;
+ traceLevel = Level.ALL // My Finagle test doesn't work, so record ALL the debug logs
+ &hellip;</pre>
+</p></td>
+    <td><code>Level.INFO</code></td>
+</tr>
+
+<tr>
+    <td><code>verboseCmd</code></td>
+    <td><p>A boolean value that specifies the level of feedback from Iago. A value of <code>true</code> specifies maximum feedback.</p>
+    <p><b>Example: </b><code>verboseCmd = true</code></p></td>
+    <td><code>false</code></td>
 </tr>
 </tbody>
 </table>
 
-####Extension Point Parameters
+#### [Specifying Victims](id:Specifying_Victims)
+
+The point of Iago is to load-test a service. Iago calls these "victims".
+
+
+Victims may be a
+
+1. single host:port pair
+2. list of host:port pairs
+3. a zookeeper serverset
+
+Note that ParrotUdpTransport can only handle a single host:port pair. The other transports that come with Iago, being Finagle based, do not have this limitation.
+
+<table border="1" cellpadding="6">
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Required or<br/>Default Value</th>
+</tr>
+</thead>
+
+<tr>
+  <td><code>victims</code></td>
+  <td><p>A list of host:port pairs:</p>
+  <code>victims="example.com:80 example2.com:80"</code>
+  <p/><p>A zookeeper server set:</p>
+  <code>victims="/some/zookeeper/path"</code>
+  </td>
+  <td><b>Required</b></td>
+</tr>
+
+<tr>
+    <td><code>port</code></td>
+    <td><p>An integer value that specifies the port on which to deliver requests to the <code>victims</code>.</p>
+    <p>The port is used for two things: to provide a port if none were specified in victims, and to provide a port for the host header using a FinagleTransport.</p>
+    <p><b>Example: </b><code>port = 9000</code></p></td>
+    <td><b>Required</b></td>
+</tr>
+
+<tr>
+<td><code>victimClusterType</code></td>
+  <td>
+  <p>When victimClusterType is "static", we set victims and port. victims can be a single host name, a host:port pair, or a list of host:port pairs separated with commas or spaces.</p>
+  <p>When victimClusterType is "sdzk" (which stands for "service discovery zookeeper") the victim is considered to be a server set, referenced with victims, victimZk, and victimZkPort.</p></td>
+<td>Default: <code>"static"</code></td>
+</tr>
+<tr>
+<td><code>victimZk</code></td>
+<td><p>the host name of the zookeeper where your serverset is registered</p></td>
+<td><p>Default is <code>"sdzookeeper.local.twitter.com"</code></p></td>
+</tr>
+
+<tr>
+  <td><code>victimZkPort</code></td>
+  <td><p>The port of the zookeeper where your serverset is registered</p></td>
+  <td><p>Default: <code>2181</code></p></td>
+</tr>
+</table>
+
+#### [Extension Point Parameters](id:extension_point_parameters)
 
 <p><strong>Alternative Use:</strong> You can specify the following <em>extension point</em> parameters to configure projects in which Iago is used as both a feeder and server. The Iago feeder provides the log lines to your project, which uses these log lines to form requests that the Iago server then handles:</p>
 
@@ -631,9 +720,116 @@ new ParrotLauncherConfig {
 
 [Top](#Top)
 
-<a name="Contributing to Iago "></a>
+#### [Sending Large Messages](id:sending_large_messages)
 
-## Contributing to Iago
+By default, the parrot feeder sends a thousand messages at a time to each connected parrot server until the parrot server has one minutes worth of data. This is a good strategy when messages are small (less than a kilobyte). When messages are large, the parrot server will run out of memory. Consider an average message size of 100k, then the feeder will be maintaining an output queue for each connected parrot server of 100 million bytes. For the parrot server, consider a request rate of 2000, then 2000 * 60 * 100k = 12 gigabytes (at least). The following parameters help with large messages: 
+
+<table border="1" cellpadding="6">
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Required or<br/>Default Value</th>
+</tr>
+</thead>
+<tr>
+  <td><code>batchSize</code></td>
+  <td>
+    <p>how many messages the parrot feeder sends at one time to the
+    parrot server. For large messages, setting this to 1 is
+    recommended.</p></td>
+  <td>Default: <code>1000</code></td>
+</tr>
+<tr>
+<td><code>cachedSeconds</code></td>
+<td><p>how many seconds worth of data the parrot server will attempt to cache. Setting this to 1 for large messages is recommended.</p></td>
+<td><p>Default is <code>60</code></p></td>
+</tr>
+</table>
+
+[Top](#Top)
+
+## [Metrics](id:metrics)
+
+Iago uses [Ostrich](https://github.com/twitter/ostrich) to record its metrics. Iago is configured so that a simple graph server is available as long as the parrot server is running. If you are using localMode=true, then the default place for this is
+
+&nbsp;&nbsp;[http://localhost:9994/graph/](http://localhost:9994/graph/)
+
+One metric of particular interest is
+ 
+&nbsp;&nbsp;[http://localhost:9994/graph/?g=metric:client/request_latency_ms](http://localhost:9994/graph/?g=metric:client/request_latency_ms)
+
+Request latency is the time it takes to queue the request for sending until the response is received. See the [Finagle User Guide](http://twitter.github.io/finagle/guide/Metrics.html) for more about the individual metrics.
+
+[Top](#Top)
+
+## [What Files Are Created?](id:artifacts)
+
+The Iago launcher creates the following files
+
+	config/target/parrot-feeder.scala
+	config/target/parrot-server.scala
+	scripts/common.sh
+	scripts/parrot-feeder.sh
+	scripts/parrot-server.sh
+
+The Iago feeder creates
+
+	parrot-feeder.log
+	gc-feeder.log
+
+The Iago server creates
+
+	parrot-server.log
+	parrot-server-stats.log
+	gc-server.log 
+
+The logs are rotated by size. Each individual log can be up to 100 megabytes before being rotated. The are 6 rotations maintained.
+
+The stats log, parrot-server-stats.log, is a minute-by-minute dump of all the statistics maintained by the Iago server.
+
+[Top](#Top)
+
+## [ChangeLog](id:ChangeLog)
+
+2013-04-11  release 0.6.6
+
+* fixed initial request rate & feeder-mesos-ram issue
+
+2013-03-29  release 0.6.5
+
+* More Proxy=None fixes: need to cleanup from a possibly aborted previous run
+
+2013-03-25  release 0.6.4
+
+* fixes for when Proxy=None
+
+2013-03-22  release 0.6.3
+
+* supporting large requests (BlobStore): new configurations cachedSeconds & mesosRamInMb
+* launcher changes: configurable proxy, create config directory if needed, and handle errors better (don't hang)
+
+2013-03-12  release 0.6.2
+
+* serversets as victims
+* make local logs work with non-local distribution directories
+* kestrel transport transactional get support
+* check generated config files *before* launch
+* hostHeader now always set in finagle transport
+* LzoFileLogSource for iago
+* Thrift over TLS
+* traceLevel config
+
+2012-10-22  release 0.5.14
+
+* fixes to mesos configuration
+* OAuth enabled
+* and more
+
+[Top](#Top)
+
+<a name="Contributing to Iago "></a>
+## [Contributing to Iago](id:Contributing)
 
 Iago is open source, hosted on Github <a href="http://github.com/twitter/iago">here</a>.
 If you have a contribution to make, please fork the repo and submit a pull request.
