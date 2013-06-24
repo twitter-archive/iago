@@ -5,7 +5,8 @@ new ParrotLauncherConfig {
   jobName = "load_echo"
   port = 8081
   victims = "localhost"
-  log = "config/sample.log"
+  //log = "config/sample.log"
+  log = "/Users/thowland/src/osiago/examples/echo/config/echo.scala"
   requestRate = 1
   numInstances = 1
   duration = 5
@@ -17,5 +18,4 @@ new ParrotLauncherConfig {
   responseType = "Array[Byte]"
   transport = "ThriftTransport"
   loadTest = "new EchoLoadTest(service.get)"
-  parser = "thrift"
 }

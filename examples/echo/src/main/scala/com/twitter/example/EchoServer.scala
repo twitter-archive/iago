@@ -52,15 +52,6 @@ object EchoServer {
       .name("thriftserver")
       .build(service)
 
-    // Zookeeper Support
-    val zkHost = "localhost" //put your zookeeper host here
-    val zkPort = 2181
-    val zkCluster: Array[InetSocketAddress] = InetAddress.getAllByName(zkHost).map(new InetSocketAddress(_, zkPort))
-    val zkClient = new ZooKeeperClient(Amount.of(50, Time.MILLISECONDS), asJavaIterable(zkCluster.toIterable))
-    val serverSet = new ServerSetImpl(zkClient, "/twitter/services/parrot-examples")
-    val cluster = new ZookeeperServerSetCluster(serverSet)
-
-    cluster.join(address)
   }
 
   def getRequestCount = requestCount.get
