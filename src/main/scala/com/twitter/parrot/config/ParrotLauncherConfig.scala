@@ -88,6 +88,7 @@ import com.twitter.parrot.util.LoadTestStub
   var requestType = "ParrotRequest"
   var responseType = "HttpResponse"
   var transport = "FinagleTransport"
+  var loadTestName = "thrift"
   var loadTest = "new LoadTestStub(service.get)"
 
   // e.g., createDistribution = "createDistribution = { rate => new MyDistribution(rate) }"
