@@ -29,7 +29,7 @@ trait ParrotCommonConfig {
   var parrotHosts = List("localhost")
   var finagleTimeout = Duration(5, TimeUnit.SECONDS)
 
-  var classPath="${APP_HOME}/*:${APP_HOME}/libs/*"
+  var classPath="*:libs/*"
 
   var loggers: List[LoggerFactory] = Nil
   var runtime: Option[RuntimeEnvironment] = None
