@@ -19,4 +19,4 @@ unzip ../iago-echo-package-dist.zip
 sh -evx scripts/echo-server.sh
 
 ## Run Iago
-java -jar sbt-example-1.0.jar -f config/echo.scala
+java -jar iago-echo-1.0.jar -f config/echo.scala

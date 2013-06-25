@@ -1,15 +1,16 @@
 import com.twitter.parrot.config.ParrotLauncherConfig
 
 new ParrotLauncherConfig {
-  distDir = "."
   jobName = "load_echo"
   port = 8081
   victims = "localhost"
-  //log = "config/sample.log"
-  log = "/Users/thowland/src/osiago/examples/echo/config/echo.scala"
+
+  // traceLevel = com.twitter.logging.Level.TRACE
+
+  // log = "your_input_file_here.log"
+  log = "config/echo.scala"
   requestRate = 1
-  numInstances = 1
-  duration = 5
+  duration = 15
   timeUnit = "MINUTES"
   reuseFile = true
   localMode = true
