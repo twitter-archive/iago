@@ -6,7 +6,6 @@ import com.twitter.parrot.server.ParrotRequest
 new ParrotServerConfig[ParrotRequest, Unit] {
   // DIFFERENCES
   replayTimeCheck = true
-  slopTimeInMs = 500
   thinkTime = 500
 
   com.twitter.parrot.util.ConsoleHandler.start(Level.ALL)

@@ -24,14 +24,18 @@ import scala.collection.mutable
 import scala.xml.Elem
 import scala.xml.Node
 import com.twitter.logging.Logger
+import com.twitter.ostrich.admin.ServiceTracker
 import com.twitter.ostrich.stats.Stats
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.parrot.thrift.ParrotLog
 import com.twitter.parrot.thrift.ParrotServerService
 import com.twitter.parrot.thrift.ParrotState
 import com.twitter.parrot.thrift.ParrotStatus
+import com.twitter.parrot.util.PrettyDuration
 import com.twitter.util.Future
-import com.twitter.ostrich.admin.ServiceTracker
+import com.twitter.util.Promise
+import com.twitter.util.Stopwatch
+import java.util.concurrent.atomic.AtomicBoolean
 
 trait ParrotServer[Req <: ParrotRequest, Rep] extends ParrotServerService.ServiceIface {
   val config: ParrotServerConfig[Req, Rep]
@@ -41,6 +45,9 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
   extends ParrotServer[Req, Rep] {
   private[this] val log = Logger.get(getClass)
   private[this] val status = new ParrotStatus().setStatus(ParrotState.UNKNOWN)
+  val done = Promise[Void]
+
+  private[this] val isShutdown = new AtomicBoolean(false)
 
   private[this] lazy val thriftServer = config.thriftServer.getOrElse(throw new Exception("Unconfigured thrift service"))
   private[this] lazy val clusterService = config.clusterService.getOrElse(throw new Exception("Unconfigured cluster service"))
@@ -58,24 +65,38 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     Future.Void
   }
 
+  /** indicate when the first record has been received */
+  def firstRecordReceivedFromFeeder: Future[Unit] = queue.firstRecordReceivedFromFeeder
+
   def shutdown(): Future[Void] = {
-    
+
     /* Calling ServiceTracker.shutdown() causes all the Ostrich threads to go away. It also results
      * in all its managed services to be shutdown. That includes this service. We put a guard
      * here so we don't end up calling ourselves twice.
      */
-    
-    if (status.getStatus != ParrotState.SHUTDOWN) {
-      status.setStatus(ParrotState.STOPPING)
-      clusterService.shutdown()
-      queue.shutdown()
-      transport.shutdown()
-      status.setStatus(ParrotState.SHUTDOWN)
-      config.recordProcessor.shutdown()
-      ServiceTracker.shutdown()
-      thriftServer.shutdown()
+
+    if (isShutdown.compareAndSet(false, true)) {
+      Future {
+        status.setStatus(ParrotState.STOPPING)
+        log.trace("server: shutting down")
+        clusterService.shutdown()
+        queue.shutdown()
+        shutdownTransport
+        status.setStatus(ParrotState.SHUTDOWN)
+        config.recordProcessor.shutdown()
+        ServiceTracker.shutdown()
+        thriftServer.shutdown()
+        log.trace("server: shut down")
+        done.setValue(null)
+      }
     }
-    Future.Void
+    done
+  }
+
+  private[this] def shutdownTransport: Unit = {
+    val elapsed = Stopwatch.start()
+    transport.shutdown()
+    log.trace("transport shut down in %s", PrettyDuration(elapsed()))
   }
 
   def setRate(newRate: Int): Future[Void] = {
@@ -95,7 +116,7 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     result
   }
 
-  def getStatus: Future[ParrotStatus] = {
+  def getStatus: Future[ParrotStatus] = Future {
     val result = new ParrotStatus
     val collection = Stats.get("global")
 
@@ -114,7 +135,7 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     result.setQueueDepth(depth)
     result.setRequestsPerSecond(rps)
     result.setStatus(status.getStatus)
-    Future.value(result.setTotalProcessed(processed))
+    result.setTotalProcessed(processed)
   }
 
   def pause(): Future[Void] = {
@@ -179,7 +200,7 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     there == new File(".").getCanonicalPath()
   }
 
-  def getLog(offset: Long, length: Int, fileName: java.lang.String): Future[ParrotLog] = {
+  def getLog(offset: Long, length: Int, fileName: java.lang.String): Future[ParrotLog] = Future {
 
     if (wandering(fileName))
       throw new RuntimeException("can only reference files at the top of this sandbox")
@@ -202,6 +223,6 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     var buf = new Array[Char](len)
     fr.read(buf)
     fr.close
-    Future.value(new ParrotLog(off, len, new String(buf)))
+    new ParrotLog(off, len, new String(buf))
   }
 }

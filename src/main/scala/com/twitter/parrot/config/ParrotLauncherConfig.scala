@@ -45,7 +45,7 @@ trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfi
   var numCpus = 1.0
   var numFeederInstances = 1
   var numInstances = 1
-  var requestTimeoutInMs = Integer.MAX_VALUE
+  var requestTimeoutInMs = 30 * 1000
   var requestRate = 1
   var reuseConnections = true
   var reuseFile = true

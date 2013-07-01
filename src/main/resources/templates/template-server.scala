@@ -26,7 +26,6 @@ new #{configType}[#{requestType}, #{responseType}] {
   statsName = "parrot_#{jobName}"
   thinkTime = 0
   replayTimeCheck = false
-  slopTimeInMs = 100
   testHosts = List("api.twitter.com")
   charEncoding = None
   httpHostHeader = "#{header}"

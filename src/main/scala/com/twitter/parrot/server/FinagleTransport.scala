@@ -34,7 +34,7 @@ import com.twitter.util._
 class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
   extends ParrotTransport[ParrotRequest, HttpResponse] {
 
-  val builder = ClientBuilder()
+  private[this] val builder = ClientBuilder()
     .codec(Http())
     .hostConnectionCoresize(config.hostConnectionCoresize)
     .hostConnectionIdleTime(Duration(config.hostConnectionIdleTimeInMs, TimeUnit.MILLISECONDS))
@@ -46,31 +46,27 @@ class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
     .keepAlive(true)
     .reportTo(new OstrichStatsReceiver)
 
-  val builder2 = {
+  private[this] val builder2 = {
     if (config.transportScheme == config.TransportScheme.HTTPS)
       builder.tlsWithoutValidation()
     else builder
   }
 
-  val builder3 = {
-    config.victim.value match {
-      case config.HostPortListVictim(victims) => builder2.hosts(victims)
-      case config.ServerSetVictim(cluster)    => builder2.cluster(cluster)
-    }
+  private[this] val builder3 = config.victim.value match {
+    case config.HostPortListVictim(victims) => builder2.hosts(victims)
+    case config.ServerSetVictim(cluster)    => builder2.cluster(cluster)
   }
 
-  var factory: ServiceFactory[HttpRequest, HttpResponse] = null
-  var service: Service[HttpRequest, HttpResponse] = null
-  if (config.reuseConnections)
-    service = builder3.build()
-  else
-    factory = builder3.buildFactory()
+  private[this] val service =
+    if (config.reuseConnections)
+      FinagleService(new RefcountedService(builder3.build()))
+    else
+      FinagleServiceFactory(builder3.buildFactory())
 
   var allRequests = 0
   override def stats(response: HttpResponse) = Seq(response.getStatus.getCode.toString)
 
-  override protected[server] def sendRequest(request: ParrotRequest): Future[HttpResponse] = {
-    val client = getClientForHost
+  override def sendRequest(request: ParrotRequest): Future[HttpResponse] = {
     val requestMethod = request.method match {
       case "POST" => HttpMethod.POST
       case _      => HttpMethod.GET
@@ -81,7 +77,9 @@ class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
       case (key, value) =>
         httpRequest.setHeader(key, value)
     }
-    httpRequest.setHeader("Cookie", request.cookies map { case (name, value) => name + "=" + value } mkString (";"))
+    httpRequest.setHeader("Cookie", request.cookies map {
+      case (name, value) => name + "=" + value
+    } mkString (";"))
     httpRequest.setHeader("User-Agent", "com.twitter.parrot")
     httpRequest.setHeader("X-Parrot", "true")
     httpRequest.setHeader("X-Forwarded-For", randomIp)
@@ -101,23 +99,8 @@ class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
 ========================================================"""
         .format(httpRequest.toString))
 
-    client flatMap { service: Service[HttpRequest, HttpResponse] =>
-      val result = service.apply(httpRequest)
-      val response = request.response.asInstanceOf[Promise[HttpResponse]]
-      result proxyTo response
-      result
-    }
+    service.send(httpRequest, request)
   }
 
-  private[this] def getClientForHost: Future[Service[HttpRequest, HttpResponse]] = {
-    if (config.reuseConnections)
-      Future.value(service)
-    else
-      factory()
-  }
-
-  override def shutdown() {
-    if (config.reuseConnections)
-      service.close()
-  }
+  override def close(deadline: Time): Future[Unit] = service.close(deadline)
 }

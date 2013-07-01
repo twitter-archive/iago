@@ -13,7 +13,6 @@ new ParrotServerConfig[ParrotRequest, Unit] {
   
   thinkTime = 0
   replayTimeCheck = false
-  slopTimeInMs = 100
   testHosts = List("api.twitter.com")
   charEncoding = "deflate"
 

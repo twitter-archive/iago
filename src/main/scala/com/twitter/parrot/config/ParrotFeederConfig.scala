@@ -26,7 +26,6 @@ trait ParrotFeederConfig extends Config[RuntimeEnvironment => Service]
   with ParrotCommonConfig
 {
   var batchSize = 1000
-  var busyCutoff = 10000
   var duration = Duration(0, TimeUnit.MILLISECONDS)
   var httpPort = 9993
   var inputLog: String = ""

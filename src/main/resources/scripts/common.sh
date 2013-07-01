@@ -12,12 +12,12 @@ fi
 
 export CLASSPATH="#{classPath}"
 
-function print_and_run {
+print_and_run() {
   echo "$@"
   eval "$@"
 }
 
-function go {
+go() {
   print_and_run ${JAVA_HOME}/bin/java ${JAVA_OPTS} ${MAIN_CLASS} -f ${CONFIG} "$@"
 }
 

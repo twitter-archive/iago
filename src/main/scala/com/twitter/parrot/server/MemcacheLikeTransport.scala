@@ -22,6 +22,8 @@ import com.twitter.finagle.{ CodecFactory, Service }
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util.{ Duration, Promise, Future }
 import java.util.concurrent.TimeUnit
+import com.twitter.util.Time
+import com.twitter.util.Await
 
 trait MemcacheLikeCommandExtractor[T] {
   def unapply(rawCommand: String): Option[T]
@@ -31,7 +33,6 @@ abstract class MemcacheLikeTransport[Codec, Req, Rep](
   commandExtractor: MemcacheLikeCommandExtractor[Codec],
   config: ParrotServerConfig[ParrotRequest, Rep])
   extends ParrotTransport[ParrotRequest, Rep] {
-  val clients = new mutable.HashMap[String, Service[Codec, Rep]]()
 
   def codec(): CodecFactory[Codec, Rep]
 
@@ -56,7 +57,7 @@ abstract class MemcacheLikeTransport[Codec, Req, Rep](
     }
   }
 
-  val service = builder2.build()
+  val service = new RefcountedService(builder2.build)
 
   override protected[server] def sendRequest(request: ParrotRequest): Future[Rep] = {
 
@@ -80,7 +81,5 @@ abstract class MemcacheLikeTransport[Codec, Req, Rep](
     }
   }
 
-  override def shutdown() {
-    clients.values.foreach { _.close() }
-  }
+  override def close(deadline: Time): Future[Unit] = service.close(deadline)
 }

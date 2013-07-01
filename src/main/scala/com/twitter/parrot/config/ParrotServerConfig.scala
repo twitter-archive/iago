@@ -89,7 +89,7 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   var thriftName = "parrot"
   var minThriftThreads = 10
   var httpPort = 9994
-  var httpHostHeader = "api.twitter.com"
+  var httpHostHeader = ""
   var httpHostHeaderPort = 80
 
   var numWorkers = 5
@@ -106,13 +106,12 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   var hostConnectionLimit = Integer.MAX_VALUE
   var hostConnectionMaxIdleTimeInMs = 5000
   var hostConnectionMaxLifeTimeInMs = Integer.MAX_VALUE
-  var requestTimeoutInMs = Integer.MAX_VALUE
+  var requestTimeoutInMs = 30 * 1000
   var tcpConnectTimeoutInMs = Integer.MAX_VALUE
   var idleTimeoutInSec = 300
   var reuseConnections = true
   var thriftClientId = ""
 
-  var slopTimeInMs = 0L
   var thinkTime = 0L
   var replayTimeCheck = false
   var charEncoding: Option[String] = None

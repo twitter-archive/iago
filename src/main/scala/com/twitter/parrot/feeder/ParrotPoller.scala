@@ -75,14 +75,4 @@ class ParrotPoller(cluster: ParrotCluster, serverLatch: CountDownLatch) extends 
     parrot.queueDepth = status.queueDepth
     log.debug("pollParrot: depth is %f for %s:%d", parrot.queueDepth, parrot.host, parrot.port)
   }
-
-  private[this] def makeThriftClient(host: String, port: Int): ParrotServerService.Client = {
-    val result = new ParrotServerService.Client(new TBinaryProtocol(new TSocket(host, port)))
-    try {
-      result.getInputProtocol.getTransport.open()
-    } catch {
-      case t: Throwable => log.error(t, "Error connecting to %s %d: %s", host, port, t.getClass.getName)
-    }
-    result
-  }
 }

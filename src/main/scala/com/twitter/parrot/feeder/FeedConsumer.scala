@@ -15,16 +15,22 @@ limitations under the License.
 */
 package com.twitter.parrot.feeder
 
-import collection.JavaConverters._
-import com.twitter.logging.Logger
-import com.twitter.parrot.util.{RemoteParrot, InternalCounter}
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.LinkedBlockingQueue
 
-class FeedConsumer(parrot: RemoteParrot) extends Thread {
+import scala.collection.JavaConverters.seqAsJavaListConverter
+
+import com.twitter.logging.Logger
+import com.twitter.parrot.util.InternalCounter
+import com.twitter.parrot.util.RemoteParrot
+import com.twitter.util.Await
+import com.twitter.util.Promise
+
+class FeedConsumer(parrot: RemoteParrot, state: => FeederState.Value) extends Thread {
   private[this] val log = Logger(getClass.getName)
-  val isShutdown = new AtomicBoolean(false)
+  // The queue capacity should be cachedSeconds * requestRate / batchSize at most. The problem is
+  // requestRate varies dynamically
   val queue = new LinkedBlockingQueue[List[String]](100)
+  private[this] val done = Promise[Unit]
 
   override def start() {
     this.setDaemon(true)
@@ -32,25 +38,34 @@ class FeedConsumer(parrot: RemoteParrot) extends Thread {
   }
 
   override def run() {
-    while (!isShutdown.get) {
+    while (state == FeederState.RUNNING) {
       if (parrot.isBusy) {
         Thread.sleep(ParrotPoller.pollRate)
-      }
-      else {
+      } else {
         if (queue.isEmpty) {
           log.info("Queue is empty for server %s:%d", parrot.host, parrot.port)
           Thread.sleep(ParrotPoller.pollRate) // don't spin wait on the queue
-        }
-        else {
-          try {
-            sendRequest(parrot, queue.take())
-          }
-          catch {
-            case t: Throwable => log.error(t, "Error sending request: %s", t.getClass.getName)
-          }
-        }
+        } else send
       }
     }
+    while (!queue.isEmpty() && state != FeederState.TIMEOUT)
+      if (parrot.isBusy)
+        Thread.sleep(ParrotPoller.pollRate)
+      else
+        send
+    done.setValue(())
+  }
+
+  private def send {
+    try {
+      sendRequest(parrot, queue.take())
+    } catch {
+      case t: Throwable => log.error(t, "Error sending request: %s", t.getClass.getName)
+    }
+  }
+
+  def shutdown {
+    Await.ready(done)
   }
 
   def addRequest(request: List[String]) {
@@ -67,15 +82,14 @@ class FeedConsumer(parrot: RemoteParrot) extends Thread {
 
   private[this] def sendRequest(parrot: RemoteParrot, request: List[String]) {
     val success = parrot.sendRequest(request.asJava)
-    log.info("wrote batch of size %d to %s:%d rps=%g depth=%g status=%s lines=%d",
+    log.info("FeedConsumer.sendRequest: wrote batch of size %d to %s:%d rps=%g depth=%g status=%s lines=%d",
       request.size,
       parrot.host,
       parrot.port,
       success.requestsPerSecond,
       success.queueDepth,
       success.status,
-      success.linesProcessed
-    )
+      success.linesProcessed)
 
     val linesProcessed = success.getLinesProcessed
     parrot.results.add(new InternalCounter(linesProcessed, request.length - linesProcessed))

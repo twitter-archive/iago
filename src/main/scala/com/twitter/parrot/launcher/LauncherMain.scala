@@ -29,6 +29,7 @@ object LauncherMain {
   private[this] var filename = ""
 
   def main(args: Array[String]) {
+
     try {
       val eval = new Eval()
       val config = findConfig(args) map { eval[ParrotLauncherConfig](_) }
@@ -43,6 +44,7 @@ object LauncherMain {
         // nothing!
       case t: Throwable =>
         log.fatal(t, "%s", t)
+        log.error("Exception raised while reading file: %s", filename)
         System.exit(1)
     }
   }

@@ -15,18 +15,22 @@ limitations under the License.
 */
 package com.twitter.parrot.util
 
-import com.twitter.conversions.time._
+import java.net.InetSocketAddress
+import org.apache.thrift.protocol.TBinaryProtocol
+import com.twitter.conversions.time.intToTimeableNumber
 import com.twitter.finagle.Service
 import com.twitter.finagle.builder.ClientBuilder
-import com.twitter.finagle.stats.OstrichStatsReceiver
-import com.twitter.finagle.thrift.{ThriftClientFramedCodec, ThriftClientRequest}
+import com.twitter.finagle.thrift.ThriftClientFramedCodec
+import com.twitter.finagle.thrift.ThriftClientRequest
 import com.twitter.logging.Logger
-import com.twitter.parrot.thrift.{ParrotStatus, ParrotServerService}
 import com.twitter.parrot.feeder.FeedConsumer
-import com.twitter.util.{Duration, Future, Return, Throw}
-import java.net.InetSocketAddress
-import java.util.logging.{Logger => JLogger}
-import org.apache.thrift.protocol.TBinaryProtocol
+import com.twitter.parrot.thrift.ParrotServerService
+import com.twitter.parrot.thrift.ParrotStatus
+import com.twitter.util.Duration
+import com.twitter.util.Future
+import com.twitter.util.Return
+import com.twitter.util.Throw
+import com.twitter.parrot.feeder.FeederState
 
 class InternalCounter(var success: Int = 0, var failure: Int = 0) {
   def add(counter: InternalCounter) {
@@ -36,21 +40,21 @@ class InternalCounter(var success: Int = 0, var failure: Int = 0) {
 }
 
 class RemoteParrot(val name: String,
-                   val results: InternalCounter,
-                   val host: String,
-                   val port: Int,
-                   val finagleTimeout: Duration = 5.seconds,
-                   var queueDepth: Double = 0.0,
-                   var targetDepth: Double = 0.0)
-{
+  val results: InternalCounter,
+  val host: String,
+  val port: Int,
+  val finagleTimeout: Duration = 5.seconds,
+  var queueDepth: Double = 0.0,
+  var targetDepth: Double = 0.0) {
   private[this] val log = Logger(getClass.getName)
   private[this] var consumer: FeedConsumer = null
+  private[this] var traceCount: Long = 0
 
   private[this] val (service, client) = connect(host, port)
 
-  def createConsumer() {
+  def createConsumer(state: => FeederState.Value) {
     log.trace("RemoteParrot: creating consumer")
-    consumer = new FeedConsumer(this)
+    consumer = new FeedConsumer(this, state)
     consumer.start()
     log.trace("RemoteParrot: consumer created")
   }
@@ -61,6 +65,23 @@ class RemoteParrot(val name: String,
     consumer.addRequest(batch)
   }
 
+  def queueBatch(batchFun: => List[String]) {
+    if (hasCapacity) {
+      traceCount = 0
+      val batch = batchFun
+      if (batch.size > 0) {
+        log.trace("RemoteParrot: Queuing batch for %s:%d with %d requests", host, port, batch.size)
+        addRequest(batch)
+      }
+    } else {
+      if (traceCount < 2)
+        log.trace("RemoteParrot: parrot[%s:%d] queue is over capacity", host, port)
+      else if (traceCount == 2)
+        log.trace("RemoteParrot: parrot[%s:%d] more over capacity warnings ...Ï", host, port)
+      traceCount += 1
+    }
+  }
+
   def setRate(newRate: Int) {
     log.trace("RemoteParrot: setting rate %d", newRate)
     waitFor(client.setRate(newRate))
@@ -68,17 +89,15 @@ class RemoteParrot(val name: String,
   }
 
   def sendRequest(batch: java.util.List[String]): ParrotStatus = {
-    log.trace("parrot[%s:%d] sending requests of size=%d to the server",
+    log.trace("RemoteParrot.sendRequest: parrot[%s:%d] sending requests of size=%d to the server",
       host,
       port,
-      batch.size
-    )
+      batch.size)
     val result = waitFor(client.sendRequest(batch))
-    log.trace("parrot[%s:%d] done sending requests of size=%d to the server",
+    log.trace("RemoteParrot.sendRequest: parrot[%s:%d] done sending requests of size=%d to the server",
       host,
       port,
-      batch.size
-    )
+      batch.size)
     result
   }
 
@@ -95,7 +114,7 @@ class RemoteParrot(val name: String,
   }
 
   def shutdown() {
-    consumer.isShutdown.set(true)
+    consumer.shutdown
     waitFor(client.shutdown())
     service.close()
   }
@@ -107,7 +126,7 @@ class RemoteParrot(val name: String,
   override def equals(that: Any): Boolean = {
     that match {
       case other: RemoteParrot => other.host == host && other.port == port
-      case _ => false
+      case _                   => false
     }
   }
 
@@ -121,9 +140,9 @@ class RemoteParrot(val name: String,
       .codec(ThriftClientFramedCodec())
       .hostConnectionLimit(1)
       .retries(2)
-// Enable only for debugging
-//      .reportTo(new OstrichStatsReceiver)
-//      .logger(JLogger.getLogger("thrift"))
+      // Enable only for debugging
+      //      .reportTo(new OstrichStatsReceiver)
+      //      .logger(JLogger.getLogger("thrift"))
       .build()
 
     val client = new ParrotServerService.ServiceToClient(service, new TBinaryProtocol.Factory())
@@ -134,7 +153,7 @@ class RemoteParrot(val name: String,
   private[this] def waitFor[A](future: Future[A]): A = {
     future.get(finagleTimeout) match {
       case Return(res) => res
-      case Throw(t) => throw t
+      case Throw(t)    => throw t
     }
   }
 }

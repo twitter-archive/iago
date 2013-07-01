@@ -17,7 +17,6 @@ package com.twitter.parrot.server
 
 import scala.collection.mutable
 import scala.util.Random
-
 import com.twitter.finagle.Service
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotServerConfig
@@ -26,10 +25,10 @@ import com.twitter.parrot.util.IgnorantTrustManager
 import com.twitter.util.Future
 import com.twitter.util.Time
 import com.twitter.util.Try
-
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
+import com.twitter.util.Await
 
 trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
   val log = Logger.get(getClass.getName)
@@ -44,7 +43,7 @@ trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
 
   def createService(config: ParrotServerConfig[Req, Rep]) = new ParrotService[Req, Rep](config)
 
-  def shutdown() {}
+  def shutdown(): Unit = Await.ready(close())
 
   def stats(response: Rep): Seq[String] = Nil
 

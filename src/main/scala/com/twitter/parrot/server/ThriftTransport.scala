@@ -16,7 +16,6 @@ limitations under the License.
 package com.twitter.parrot.server
 
 import java.util.concurrent.TimeUnit
-
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.finagle.thrift.ClientId
@@ -25,6 +24,8 @@ import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util.Duration
 import com.twitter.util.Future
 import com.twitter.util.Promise
+import com.twitter.util.Time
+import com.twitter.util.Await
 
 class ThriftTransport(config: ParrotServerConfig[_, _])
   extends ParrotTransport[ParrotRequest, Array[Byte]] {
@@ -58,7 +59,7 @@ class ThriftTransport(config: ParrotServerConfig[_, _])
     }
   }
 
-  val service = builder3.build()
+  val service = new RefcountedService(builder3.build())
 
   override protected[server] def sendRequest(request: ParrotRequest): Future[Array[Byte]] = {
     val result = service(request.message)
@@ -69,8 +70,6 @@ class ThriftTransport(config: ParrotServerConfig[_, _])
 
   override def createService(config: ParrotServerConfig[ParrotRequest, Array[Byte]]) =
     new ParrotThriftService(config)
-
-  override def shutdown() {
-    service.close()
-  }
+  
+  override def close(deadline: Time): Future[Unit] = service.close(deadline)
 }

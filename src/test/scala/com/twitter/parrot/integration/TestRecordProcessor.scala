@@ -39,7 +39,7 @@ class TestRecordProcessor(service: ParrotService[ParrotRequest, HttpResponse],
   private[this] val log = Logger.get(getClass)
   private[this] var exceptionCount = 0
   private[this] val hostHeader = Some((config.httpHostHeader, config.httpHostHeaderPort))
-  var responded = false
+  var responded = 0
   var properlyShutDown = false
 
   def processLines(lines: Seq[String]) {
@@ -52,7 +52,7 @@ class TestRecordProcessor(service: ParrotService[ParrotRequest, HttpResponse],
           if (!uri.path.isEmpty && !line.startsWith("#"))
             service(new ParrotRequest(hostHeader, Nil, uri, line)) respond { response =>
               log.debug("response was %s", response.toString)
-              responded = true
+              responded += 1
           }
         case Throw(t) =>
           if (exceptionCount < 3)

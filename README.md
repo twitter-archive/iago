@@ -138,7 +138,7 @@ Metrics are available in logs and in  graphs as described in [Metrics](#metrics)
 
 The Iago servers generate requests to your service. Together, all Iago servers generate the specified number of requests per minute. A Iago server's `RecordProcessor` object executes your service and maps the transaction to the format required by your service.
 
-The feeder stops sending data when it runs out of data (reuseFile = false) or the time limit (duration) expires. The feeder waits for 10 seconds or until all of its connected servers are idle, whichever comes first. Then it sends all connected servers a shutdown message. Since the default polling interval is a second, your service has on the average about half a second from the time it receives the last message from the feeder to process all its responses from the server.
+The feeder stops sending data when it runs out of data (reuseFile = false) or the time limit (duration) expires. The feeder waits for cachedSeconds*1.2 seconds or until all of its connected servers are idle, whichever comes first. Then it sends all connected servers a shutdown message. Since the default polling interval is a second, your service has on the average about half a second from the time it receives the last message from the feeder to process all its responses from the server.
 
 The feeder queries its servers to see how much data they need to maintain cachedSeconds worth of data. That is how we can have many feeders that need not coordinate with each other.
 
@@ -549,7 +549,7 @@ new ParrotLauncherConfig {
     <p>Note that parrot servers will not shut down until every response from every victim has come in. If you've modified your record processor to write test summaries this can be an issue.</p>
     <p><b>Example: </b><code>requestTimeoutInMs = 3000 // if the victim doesn't respond in three seconds, stop waiting</code></p>
   </td>
-  <td><code>Integer.MAX_VALUE</code></td>
+  <td><code>30000 // 30 seconds</code></td>
 </tr>
 
 <tr>
@@ -742,8 +742,8 @@ By default, the parrot feeder sends a thousand messages at a time to each connec
 </tr>
 <tr>
 <td><code>cachedSeconds</code></td>
-<td><p>how many seconds worth of data the parrot server will attempt to cache. Setting this to 1 for large messages is recommended.</p></td>
-<td><p>Default is <code>60</code></p></td>
+<td><p>How many seconds worth of data the parrot server will attempt to cache. Setting this to 1 for large messages is recommended. The consequence is that, if the parrot feeder garbage-collects, there will be a corresponding pause in traffic to your service unless cachedSeconds is set to a value larger than a typical feeder gc. This author has never observed a feeder gc exceeding a fraction of a second.</p></td>
+<td><p>Default is <code>20</code></p></td>
 </tr>
 </table>
 
@@ -792,39 +792,20 @@ The stats log, parrot-server-stats.log, is a minute-by-minute dump of all the st
 
 ## [ChangeLog](id:ChangeLog)
 
-2013-04-11  release 0.6.6
+2013-06-25  release 0.6.7
 
-* fixed initial request rate & feeder-mesos-ram issue
-
-2013-03-29  release 0.6.5
-
-* More Proxy=None fixes: need to cleanup from a possibly aborted previous run
-
-2013-03-25  release 0.6.4
-
-* fixes for when Proxy=None
-
-2013-03-22  release 0.6.3
-
+* graceful shutdown for small log sources
+* dropped vestigial parser config
+* weighted parrot requests
 * supporting large requests (BlobStore): new configurations cachedSeconds & mesosRamInMb
 * launcher changes: configurable proxy, create config directory if needed, and handle errors better (don't hang)
-
-2013-03-12  release 0.6.2
-
 * serversets as victims
 * make local logs work with non-local distribution directories
 * kestrel transport transactional get support
 * check generated config files *before* launch
-* hostHeader now always set in finagle transport
 * LzoFileLogSource for iago
 * Thrift over TLS
 * traceLevel config
-
-2012-10-22  release 0.5.14
-
-* fixes to mesos configuration
-* OAuth enabled
-* and more
 
 [Top](#Top)
 

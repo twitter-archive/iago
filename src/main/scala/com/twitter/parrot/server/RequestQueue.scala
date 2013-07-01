@@ -27,25 +27,22 @@ import scala.collection.mutable
 class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Rep]) {
 
   private[this] val log = Logger.get(getClass)
-  private[this] val running = new AtomicBoolean(false)
   private[this] val consumer = new RequestConsumer[Req](config)
 
   private[this] lazy val transport = config.transport.getOrElse(throw new Exception("Unconfigured transport"))
 
-  def addRequest(request: Req): Future[Rep] = {    
+  def addRequest(request: Req): Future[Rep] = {
     val response = new Promise[Rep]()
     request.response = response
     consumer.offer(request)
     response
   }
-  
+
   def pause() {
-    running.set(false)
     consumer.pause()
   }
 
   def resume() {
-    running.set(true)
     consumer.continue()
   }
 
@@ -55,7 +52,6 @@ class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Re
 
   def start() {
     log.debug("starting RequestQueue")
-    running.set(true)
     Stats.addGauge("queue_depth") { queueDepth }
     Stats.addGauge("clock_error") { clockError }
     transport respond {
@@ -79,9 +75,11 @@ class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Re
   def queueDepth = consumer.size
   def totalProcessed = consumer.totalProcessed
   def clockError = consumer.clockError
+  
+  /** indicate when the first record has been received */
+  def firstRecordReceivedFromFeeder: Future[Unit] = consumer.started
 
   def shutdown() {
-    running.set(false)
     consumer.shutdown
     log.trace("RequestQueue: shutdown")
   }

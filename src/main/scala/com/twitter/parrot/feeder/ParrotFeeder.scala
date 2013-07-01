@@ -15,24 +15,35 @@ limitations under the License.
 */
 package com.twitter.parrot.feeder
 
-import collection.JavaConverters._
-import collection.mutable
+import java.util.Timer
+import java.util.TimerTask
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+
+import scala.collection.mutable
+
 import com.twitter.logging.Logger
-import com.twitter.ostrich.admin.{BackgroundProcess, ServiceTracker, Service}
+import com.twitter.ostrich.admin.BackgroundProcess
+import com.twitter.ostrich.admin.Service
+import com.twitter.ostrich.admin.ServiceTracker
 import com.twitter.parrot.config.ParrotFeederConfig
-import com.twitter.parrot.thrift._
-import com.twitter.parrot.util.{ParrotClusterImpl, RemoteParrot}
+import com.twitter.parrot.util.ParrotClusterImpl
+import com.twitter.parrot.util.PrettyDuration
+import com.twitter.parrot.util.RemoteParrot
 import com.twitter.util.Duration
-import java.util.concurrent.{CountDownLatch, TimeUnit}
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import java.util.{TimerTask, Timer}
+
+object FeederState extends Enumeration {
+  val EOF, TIMEOUT, RUNNING = Value
+}
 
 case class Results(success: Int, failure: Int)
 
 class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   private[this] val log = Logger.get(getClass.getName)
-  private[this] val requestsRead = new AtomicInteger(0)
-  private[this] val isShutdown = new AtomicBoolean(false)
+  val requestsRead = new AtomicLong(0)
+  @volatile
+  private[this] var state = FeederState.RUNNING
 
   private[this] val initializedParrots = mutable.Set[RemoteParrot]()
 
@@ -41,8 +52,7 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   private[this] lazy val poller = new ParrotPoller(cluster, allServers)
 
   private[this] lazy val lines = config.logSource.getOrElse(
-    throw new Exception("Unconfigured logSource")
-  )
+    throw new Exception("Unconfigured logSource"))
 
   /**
    * Starts up the whole schebang. Called from FeederMain.
@@ -60,12 +70,10 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
 
     if (!validatePreconditions()) {
       shutdown()
-    }
-    else {
+    } else {
 
       BackgroundProcess {
         runLoad()
-        drainServers()
         reportResults()
         shutdown()
       }
@@ -77,9 +85,13 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
    * called remotely if the web management interface is enabled.
    */
   def shutdown() {
+    log.trace("ParrotFeeder: shutting down ...")
+    if (state == FeederState.RUNNING)
+      state = FeederState.TIMEOUT // shuts down immediately when timeout
     cluster.shutdown()
     poller.shutdown()
     ServiceTracker.shutdown()
+    log.trace("ParrotFeeder: shut down")
   }
 
   private[this] def validatePreconditions(): Boolean = {
@@ -121,12 +133,10 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
       cluster.runningParrots foreach { parrot => log.error("Server: %s:%s", parrot.host, parrot.port) }
       if (wantedInstances > actualInstances) {
         return false
-      }
-      else {
+      } else {
         log.error("Continuing anyway, engaging manual override.")
       }
     }
-
     true
   }
 
@@ -139,7 +149,7 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
 
     skipForward(config.linesToSkip)
 
-    while (!isShutdown.get) {
+    while (state == FeederState.RUNNING) {
       // limit the number of parrots we use to what we were configured to use
       val parrots = cluster.runningParrots.slice(0, config.numInstances)
 
@@ -148,25 +158,22 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
         if (!initialized(parrot)) {
           initialize(parrot)
         }
-        parrot.synchronized {
-          if(parrot.hasCapacity) {
-            queueBatch(parrot, readBatch(linesToRead))
-          }
-          else {
-            log.trace("parrot[%s:%d] queue is over capacity", parrot.host, parrot.port)
-          }
+
+        parrot.queueBatch {
+          readBatch(linesToRead)
         }
 
         if (config.maxRequests - requestsRead.get <= 0) {
-          isShutdown.set(true)
-        }
-
-        if(!lines.hasNext) {
+          log.info("ParrotFeeder.runLoad: exiting because config.maxRequests = %d and requestsRead.get = %d",
+            config.maxRequests, requestsRead.get)
+          state = FeederState.EOF
+        } else if (!lines.hasNext) {
           if (config.reuseFile) {
-            log.warning("inputLog is exhausted, restarting reader.")
+            log.info("ParrotFeeder.runLoad: inputLog is exhausted, restarting reader.")
             lines.reset()
           } else {
-            isShutdown.set(true)
+            log.info("ParrotFeeder.runLoad: exiting because log exhausted")
+            state = FeederState.EOF
           }
         }
       }
@@ -186,17 +193,19 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   private[this] def initialize(parrot: RemoteParrot) {
     parrot.targetDepth = config.cachedSeconds * config.requestRate
     parrot.setRate(config.requestRate)
-    parrot.createConsumer()
+    parrot.createConsumer {
+      state
+    }
     initializedParrots += parrot
   }
 
-  private[this] def linesToRead = {
+  private[this] def linesToRead: Int = {
     val batchSize = config.batchSize
     val linesLeft = config.maxRequests - requestsRead.get
 
     if (!lines.hasNext || linesLeft <= 0) 0
     else if (batchSize <= linesLeft) batchSize
-    else linesLeft
+    else linesLeft.toInt
   }
 
   private[this] def readBatch(readSize: Int): List[String] = {
@@ -206,16 +215,6 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
 
     requestsRead.addAndGet(result.size)
     result.toList
-  }
-
-  private[this] def queueBatch(parrot: RemoteParrot, batch: List[String]) {
-    if (!isShutdown.get && batch.size > 0) {
-      log.debug("Queuing batch for %s:%d with %d requests",
-        parrot.host,
-        parrot.port,
-        batch.size)
-      parrot.addRequest(batch)
-    }
   }
 
   // TEST: How do we handle the case where we feed a parrot for a while and then it dies,
@@ -241,22 +240,11 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     timer.schedule(new TimerTask {
       def run() {
         timer.cancel()
-        isShutdown.set(true)
+        log.info("ParrotFeeder.shutdownAfter: shutting down due to duration timeout of %s",
+          PrettyDuration(duration))
+        state = FeederState.TIMEOUT
       }
     },
       duration.inMillis)
-  }
-
-  private[this] def drainServers() {
-    def totalProcessed = cluster.parrots.foldLeft(0.0)((sum, p) => sum + p.getStatus.getTotalProcessed)
-    def queueDepth = cluster.parrots.foldLeft(0.0)((sum, p) => sum + p.getStatus.getQueueDepth)
-
-    val maxIterations = config.busyCutoff/config.pollInterval.inMilliseconds
-    var counter = 0
-
-    while((requestsRead.get != totalProcessed || queueDepth > 0) && counter < maxIterations) {
-      Thread.sleep(config.pollInterval.inMilliseconds)
-      counter = counter + 1
-    }
   }
 }

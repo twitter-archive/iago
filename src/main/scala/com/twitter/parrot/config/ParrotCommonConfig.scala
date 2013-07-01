@@ -15,10 +15,11 @@ limitations under the License.
 */
 package com.twitter.parrot.config
 
-import com.twitter.util.Duration
 import java.util.concurrent.TimeUnit
+
 import com.twitter.logging.LoggerFactory
 import com.twitter.ostrich.admin.RuntimeEnvironment
+import com.twitter.util.Duration
 
 trait ParrotCommonConfig {
   var zkHostName: Option[String] = None
@@ -33,7 +34,11 @@ trait ParrotCommonConfig {
 
   var loggers: List[LoggerFactory] = Nil
   var runtime: Option[RuntimeEnvironment] = None
-  
-  var cachedSeconds = 60
+
+  /** cachedSeconds is how many seconds worth of data we hold in the server request queue */
+  var cachedSeconds = 20
+
+  /** cutoff is how many seconds the feeder waits for the server request queue to empty */
+  def cutoff = cachedSeconds * 1.2
 
 }
