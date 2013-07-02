@@ -19,12 +19,13 @@
   - <a href="#Java Thrift Example">Java Thrift Example</a>
   - <a href="#Code Annotations for the Examples">Code Annotations for the Examples</a>
 * <a href="#Configuring Your Test">Configuring Your Test</a>
-	- [Specifying Victims](#Specifying_Victims)
-	- [Extension Point Parameters](#extension_point_parameters)
-	- [Sending Large Messages](#sending_large_messages)
-* [Metrics](#metrics)
-* [What Files Are Created?](#artifacts)
-* [ChangeLog](#ChangeLog)
+	- <a href="#Specifying_Victims">Specifying Victims</a>
+	- <a href="#extension_point_parameters">Extension Point Parameters</a>
+	- <a href="#sending_large_messages">Sending Large Messages</a>
+* <a href="#weighted_requests">Weighted Requests</a>
+* <a href="#metrics">Metrics</a>
+* <a href="#artifacts">What Files Are Created?</a>
+* <a href="#ChangeLog">ChangeLog</a>
 * <a href="#Contributing">Contributing to Iago</a>
 
 <a name="Iago Quick Start"></a>
@@ -138,9 +139,16 @@ Metrics are available in logs and in  graphs as described in [Metrics](#metrics)
 
 The Iago servers generate requests to your service. Together, all Iago servers generate the specified number of requests per minute. A Iago server's `RecordProcessor` object executes your service and maps the transaction to the format required by your service.
 
-The feeder stops sending data when it runs out of data (reuseFile = false) or the time limit (duration) expires. The feeder waits for cachedSeconds*1.2 seconds or until all of its connected servers are idle, whichever comes first. Then it sends all connected servers a shutdown message. Since the default polling interval is a second, your service has on the average about half a second from the time it receives the last message from the feeder to process all its responses from the server.
+The feeder polls its servers to see how much data they need to maintain _cachedSeconds_ worth of data. That is how we can have many feeders that need not coordinate with each other.
 
-The feeder queries its servers to see how much data they need to maintain cachedSeconds worth of data. That is how we can have many feeders that need not coordinate with each other.
+Ensuring that we go through every last message is important when we are writing traffic summaries in the record processor, especially when the data set is small. The parrot feeder shuts down due to running out of time, running out of data, or both. When the feeder runs out of data we
+
+- make sure that all the data in parrot feeder's internal queues are sent to the parrot server
+- make sure all the data held in the parrot servers cache is sent
+- wait until we get a response for all pending messages or until the reads time out
+
+When the parrot feeder runs out of time (the duration configuration) the data in the feeder's internal queues are ignored, otherwise the same process as above occurs.
+
 
 [Top](#Top)
 
@@ -746,6 +754,12 @@ By default, the parrot feeder sends a thousand messages at a time to each connec
 <td><p>Default is <code>20</code></p></td>
 </tr>
 </table>
+
+[Top](#Top)
+
+## [Weighted Requests](id:weighted_requests)
+
+Some applications must make bulk requests to their service. In other words, a single meta-request in the input log may result in several requests being satisfied by the victim. A weight field to ParrotRequest was added so that the RecordProcessor can set and use that weight to control the send rate in the RequestConsumer. For example, a request for 17 messages would be given a weight of 17 which would cause the RequestConsumer to sample the request distribution 17 times yielding a consistent distribution of load on the victim.
 
 [Top](#Top)
 
