@@ -132,7 +132,7 @@
             <thriftGenerator>finagle</thriftGenerator>
           </thriftGenerators>
         </configuration>
-        <version>0.0.12</version>
+        <version>0.0.9</version>
       </plugin>
     </plugins>
   </build>
