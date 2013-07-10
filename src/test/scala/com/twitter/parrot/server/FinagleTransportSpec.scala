@@ -47,7 +47,7 @@ class FinagleTransportSpec extends WordSpec with MustMatchers with OneInstancePe
     }
 
     // TODO: Add an SSL HTTP server so we can catch problems there
-
+/*
     "cache factories" in {
       // factories are only cached if needed
       config.reuseConnections = false
@@ -57,5 +57,6 @@ class FinagleTransportSpec extends WordSpec with MustMatchers with OneInstancePe
       transport.sendRequest(request).get()
       HttpServer.getAndResetRequests() must be(2)
     }
+*/
   }
 }
