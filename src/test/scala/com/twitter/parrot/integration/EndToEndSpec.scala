@@ -99,18 +99,19 @@ class EndToEndSpec extends WordSpec with MustMatchers {
         feederConfig.batchSize = 3
 
         val feeder = new ParrotFeeder(feederConfig)
-        ConsoleHandler.start(Level.INFO)
         feeder.start() // shuts down when maxRequests have been sent
         waitUntilFirstRecord(server, totalRequests)
         val start = Time.now
         waitForServer(server.done, seconds * 2)
         val (requestsRead, allRequests, rp) = report(feeder, transport, serverConfig)
-        log.debug("EndToEndSpec: done waiting for the parrot server to finish")
+        log.debug("EndToEndSpec: transport.allRequests (%d) == totalRequests (%d): " + (transport.allRequests == totalRequests), transport.allRequests, totalRequests)
         transport.allRequests must be(totalRequests)
         val untilNow = start.untilNow.inNanoseconds.toDouble / Duration.NanosPerSecond.toDouble
         untilNow must be < (seconds * 1.20)
         untilNow must be > (seconds * 0.80)
+        log.debug("EndToEndSpec: transport.allRequests (%d) == requestsRead (%d): " + (transport.allRequests == requestsRead), transport.allRequests, requestsRead)
         transport.allRequests must be(requestsRead)
+        log.debug("EndToEndSpec: rp.responded (%d) == requestsRead (%d): " + (rp.responded == requestsRead), rp.responded, requestsRead)
         rp.responded must be(requestsRead)
         assert(rp.properlyShutDown)
       }
