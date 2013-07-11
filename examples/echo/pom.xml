@@ -14,11 +14,23 @@
     <git.dir>${project.basedir}/../../.git</git.dir>
     <mainClass>com.twitter.parrot.launcher.LauncherMain</mainClass>
   </properties>
+  <repositories>
+    <repository>
+      <id>Twitter public Maven repo</id>
+      <url>http://maven.twttr.com</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>Twitter public Maven repo</id>
+      <url>http://maven.twttr.com</url>
+    </pluginRepository>
+  </pluginRepositories>
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>iago</artifactId>
-      <version>0.6.7</version>
+      <version>0.6.8</version>
     </dependency>
   </dependencies>
   <build>
@@ -38,6 +50,7 @@
             <thriftGenerator>finagle</thriftGenerator>
           </thriftGenerators>
         </configuration>
+        <version>0.0.9</version>
       </plugin>
     </plugins>
   </build>
