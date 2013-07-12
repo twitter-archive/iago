@@ -5,8 +5,13 @@ then creates an Iago job to send traffic to your server.
 
 If you are unfamiliar with how to use Iago, check out src & config/echo.scala. Also read the Iago README.
 
-## Build It
+## Build Iago
 
+mvn -DskipTest install
+
+## Build the example
+
+cd examples/echo
 mvn package
 
 ## Unpack
