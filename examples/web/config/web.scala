@@ -46,4 +46,11 @@ new ParrotLauncherConfig {
 
   requestRate = 1	// 50000 requests per second per parrot server
                         // is the practical upper limit
+
+imports="""
+import com.twitter.parrot.processor.SimpleRecordProcessor
+import org.jboss.netty.handler.codec.http.HttpResponse
+"""
+  loadTest = "new SimpleRecordProcessor(service.get, this)"
+
 }
