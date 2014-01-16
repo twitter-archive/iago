@@ -62,6 +62,7 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     clusterService.start(config.parrotPort)
     status.setStatus(ParrotState.RUNNING)
     log.info("using record processor %s", config.recordProcessor.getClass().getName())
+    config.recordProcessor.start()
     Future.Void
   }
 
