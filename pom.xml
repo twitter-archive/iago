@@ -63,27 +63,27 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-http</artifactId>
-      <version>6.5.1</version>
+      <version>6.6.2</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-kestrel</artifactId>
-      <version>6.5.1</version>
+      <version>6.6.2</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-memcached</artifactId>
-      <version>6.5.1</version>
+      <version>6.6.2</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-ostrich4</artifactId>
-      <version>6.5.1</version>
+      <version>6.6.2</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>finagle-thrift</artifactId>
-      <version>6.5.1</version>
+      <version>6.6.2</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
