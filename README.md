@@ -775,6 +775,62 @@ One metric of particular interest is
 
 Request latency is the time it takes to queue the request for sending until the response is received. See the [Finagle User Guide](http://twitter.github.io/finagle/guide/Metrics.html) for more about the individual metrics.
 
+Other metrics of interest:
+
+<table border="1" cellpadding="6">
+<thead>
+<tr>
+<th>Statistic</th>
+<th>Description</th>
+</tr>
+</thead>
+<tr>
+    <td>`connection_duration`</td>
+    <td>duration of a connection from established to closed?</td>
+</tr>
+<tr>
+    <td>`connection_received_bytes`</td>
+    <td>bytes received per connection</td>
+</tr>
+<tr>
+    <td>`connection_requests`</td>
+    <td>Number of connection requests that your client did, ie. you can have a pool of 1 connection and the connection can be closed 3 times, so the "connection_requests" would be 4 (even if connections = 1)</td>
+</tr>
+<tr>
+    <td>`connection_sent_bytes`</td>
+    <td>bytes send per connection</td>
+</tr>
+<tr>
+    <td>`connections`</td>
+    <td>is the current number of connections between client and server</td>
+</tr>
+<tr>
+    <td>`handletime_us`</td>
+    <td>time to process the response from the server (ie. execute all the chained map/flatMap)</td>
+</tr>
+<tr>
+    <td>`pending`</td>
+    <td>Number of pending requests (ie. requests without responses)</td>
+</tr>
+<tr>
+    <td>`request_concurrency`</td>
+    <td>is the current number of connections being processed by finagle</td>
+</tr>
+<tr>
+    <td>`request_latency_ms`</td>
+    <td>the time of everything between request/response.</td>
+</tr>
+<tr>
+    <td>`request_queue_size`</td>
+    <td>Number of requests waiting to be handled by the server</td>
+</tr>
+<tr>
+</table>
+
+Iago stats files (or any set of Finagle stats) can also be viewed using [Raggiana: A simple standalone Finagle stats viewer](https://github.com/twitter/raggiana).
+
+You can also use Raggiana directly at [http://twitter.github.io/raggiana](http://twitter.github.io/raggiana).
+
 [Top](#Top)
 
 ## [What Files Are Created?](id:artifacts)
@@ -800,7 +856,10 @@ The Iago server creates
 
 The logs are rotated by size. Each individual log can be up to 100 megabytes before being rotated. The are 6 rotations maintained.
 
-The stats log, parrot-server-stats.log, is a minute-by-minute dump of all the statistics maintained by the Iago server.
+The stats log, `parrot-server-stats.log`, is a minute-by-minute dump of all the statistics maintained by the Iago server. Each entry
+is for the time period since the previous one. That is, all entries in `parrot-server-stats.log` need to be accumulated to match the
+final values reported by [http://localhost:9994/stats.txt](http://localhost:9994/stats.txt).
+
 
 [Top](#Top)
 
