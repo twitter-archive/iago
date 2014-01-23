@@ -785,43 +785,43 @@ Other metrics of interest:
 </tr>
 </thead>
 <tr>
-    <td>`connection_duration`</td>
+    <td><code>connection_duration</code></td>
     <td>duration of a connection from established to closed?</td>
 </tr>
 <tr>
-    <td>`connection_received_bytes`</td>
+    <td><code>connection_received_bytes</code></td>
     <td>bytes received per connection</td>
 </tr>
 <tr>
-    <td>`connection_requests`</td>
+    <td><code>connection_requests</code></td>
     <td>Number of connection requests that your client did, ie. you can have a pool of 1 connection and the connection can be closed 3 times, so the "connection_requests" would be 4 (even if connections = 1)</td>
 </tr>
 <tr>
-    <td>`connection_sent_bytes`</td>
+    <td><code>connection_sent_bytes</code></td>
     <td>bytes send per connection</td>
 </tr>
 <tr>
-    <td>`connections`</td>
+    <td><code>connections</code></td>
     <td>is the current number of connections between client and server</td>
 </tr>
 <tr>
-    <td>`handletime_us`</td>
+    <td><code>handletime_us</code></td>
     <td>time to process the response from the server (ie. execute all the chained map/flatMap)</td>
 </tr>
 <tr>
-    <td>`pending`</td>
+    <td><code>pending</code></td>
     <td>Number of pending requests (ie. requests without responses)</td>
 </tr>
 <tr>
-    <td>`request_concurrency`</td>
+    <td><code>request_concurrency</code></td>
     <td>is the current number of connections being processed by finagle</td>
 </tr>
 <tr>
-    <td>`request_latency_ms`</td>
+    <td><code>request_latency_ms</code></td>
     <td>the time of everything between request/response.</td>
 </tr>
 <tr>
-    <td>`request_queue_size`</td>
+    <td><code>request_queue_size</code></td>
     <td>Number of requests waiting to be handled by the server</td>
 </tr>
 <tr>
