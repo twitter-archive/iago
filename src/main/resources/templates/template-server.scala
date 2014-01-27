@@ -15,7 +15,7 @@ new #{configType}[#{requestType}, #{responseType}] {
       rollPolicy = Policy.MaxSize(100.megabytes),
       rotateCount = 6
     )
-  ) #{statlogger} :: loggers
+  ) #{statlogger} #{extraLoggers} :: loggers
 
   zkHostName = #{zkHostName}
   zkNode = "#{zkNode}"
@@ -31,6 +31,7 @@ new #{configType}[#{requestType}, #{responseType}] {
   httpHostHeader = "#{header}"
   httpHostHeaderPort = #{httpHostHeaderPort}
   thriftClientId = "#{thriftClientId}"
+  transportScheme = #{scheme}
   reuseConnections = #{reuseConnections}
   hostConnectionLimit = #{hostConnectionLimit}
   hostConnectionCoresize = #{hostConnectionCoresize}

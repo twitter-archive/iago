@@ -57,6 +57,7 @@ trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfi
   var thriftClientId = ""
   var timeUnit = "MINUTES"
   var traceLevel: Level = Level.INFO
+  var extraLoggers: String = ""
   var verboseCmd = false
 
   // victims. When victimClusterType is "static", we set victims and

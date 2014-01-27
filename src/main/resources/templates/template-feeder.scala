@@ -31,5 +31,5 @@ new ParrotFeederConfig {
       rollPolicy = Policy.MaxSize(100.megabytes),
       rotateCount = 6
     )
-  )
+  ) #(extraLoggers) :: loggers
 }
