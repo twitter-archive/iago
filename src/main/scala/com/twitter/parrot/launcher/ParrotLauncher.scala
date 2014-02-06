@@ -97,6 +97,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("thriftClientId" -> config.thriftClientId),
     ("timeUnit" -> config.timeUnit),
     ("traceLevel" -> config.traceLevel.toString),
+    ("extraLoggers" -> config.extraLoggers),
     ("transport" -> config.transport),
     ("victim" -> victim))
 
