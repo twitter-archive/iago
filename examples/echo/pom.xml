@@ -42,17 +42,16 @@
           <buildPropertiesPackage>com.twitter.iago-echo</buildPropertiesPackage>
         </configuration>
       </plugin>
-    <plugins>
       <plugin>
         <groupId>com.twitter</groupId>
-        <artifactId>scrooge-maven-plugin</artifactId>
-        <!-- this version must match the version from scrooge-gen.ivy.xml -->
-        <version>3.12.1</version>
+        <artifactId>maven-finagle-thrift-plugin</artifactId>
         <configuration>
-          <language>scala</language>
+          <thriftGenerators>
+            <thriftGenerator>finagle</thriftGenerator>
+          </thriftGenerators>
         </configuration>
+        <version>0.0.9</version>
       </plugin>
-    </plugins>
     </plugins>
   </build>
 </project>
