@@ -19,11 +19,16 @@
   </properties>
   <repositories>
     <repository>
-      <id>binaries</id>
-      <name>binaries</name>
-      <url>http://binaries.local.twitter.com/maven/</url>
+      <id>Twitter public Maven repo</id>
+      <url>http://maven.twttr.com</url>
     </repository>
   </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>Twitter public Maven repo</id>
+      <url>http://maven.twttr.com</url>
+    </pluginRepository>
+  </pluginRepositories>
   <dependencies>
     <dependency>
       <groupId>org.scala-lang</groupId>
