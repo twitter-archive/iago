@@ -7,30 +7,15 @@
   <name>${project.artifactId}</name>
   <description>Iago Load Generator</description>
   <inceptionYear>2012</inceptionYear>
-
   <parent>
     <groupId>com.twitter</groupId>
     <artifactId>scala-parent-292</artifactId>
     <version>0.1.6</version>
     <relativePath>../../parents/scala-parent-292/pom.xml</relativePath>
   </parent>
-
   <properties>
-    <git.dir>${project.basedir}/../.git</git.dir>
     <mainClass>com.twitter.parrot.launcher.LauncherMain</mainClass>
   </properties>
-  <repositories>
-    <repository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
-    </repository>
-  </repositories>
-  <pluginRepositories>
-    <pluginRepository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
-    </pluginRepository>
-  </pluginRepositories>
   <dependencies>
     <dependency>
       <groupId>org.scala-lang</groupId>
