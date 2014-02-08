@@ -74,58 +74,59 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-http</artifactId>
+      <artifactId>finagle-http_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-kestrel</artifactId>
+      <artifactId>finagle-kestrel_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-zipkin</artifactId>
+      <artifactId>finagle-zipkin_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-memcached</artifactId>
+      <artifactId>finagle-memcached_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-ostrich4</artifactId>
+      <artifactId>finagle-ostrich4_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-thrift</artifactId>
+      <artifactId>finagle-thrift_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>ostrich</artifactId>
+      <artifactId>ostrich_2.9.2</artifactId>
       <version>9.2.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-core</artifactId>
+      <artifactId>util-core_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-eval</artifactId>
+      <artifactId>util-eval_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-logging</artifactId>
+      <artifactId>util-logging_2.9.2</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-core</artifactId>
-      <version>0.20.2.cdh3u2-t2</version>
+      <!-- <version>0.20.2.cdh3u2-t2</version> -->
+      <version>0.20.2</version>
     </dependency>
     <dependency>
       <groupId>commons-logging</groupId>
