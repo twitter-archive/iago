@@ -29,10 +29,7 @@ import com.twitter.parrot.config.ParrotFeederConfig
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.parrot.feeder.InMemoryLog
 import com.twitter.parrot.feeder.ParrotFeeder
-import com.twitter.parrot.server.FinagleTransport
-import com.twitter.parrot.server.ParrotRequest
-import com.twitter.parrot.server.ParrotServerImpl
-import com.twitter.parrot.server.ThriftServerImpl
+import com.twitter.parrot.server._
 import com.twitter.parrot.util.ConsoleHandler
 import com.twitter.parrot.util.PrettyDuration
 import com.twitter.util.Await
@@ -45,7 +42,7 @@ import com.twitter.util.Time
 import com.twitter.util.TimeoutException
 
 @RunWith(classOf[JUnitRunner])
-class EndToEndSpec extends WordSpec with MustMatchers {
+class EndToEndSpec extends WordSpec with MustMatchers with FeederFixture {
   private[this] val log = Logger.get(getClass.getName)
   private[this] val site = "twitter.com"
   private[this] val urls = List(
@@ -67,9 +64,8 @@ class EndToEndSpec extends WordSpec with MustMatchers {
         val server: ParrotServerImpl[ParrotRequest, HttpResponse] =
           new ParrotServerImpl(serverConfig)
         server.start()
-        val feederConfig = makeFeederConfig(serverConfig.parrotPort)
+        val feederConfig = makeFeederConfig(serverConfig.parrotPort, urls)
         feederConfig.requestRate = 1000
-        feederConfig.logSource = Some(new InMemoryLog(urls))
         val feeder: ParrotFeeder = new ParrotFeeder(feederConfig)
         feeder.start() // shuts down when it reaches the end of the log
         waitForServer(server.done, feederConfig.cutoff)
@@ -90,12 +86,11 @@ class EndToEndSpec extends WordSpec with MustMatchers {
         val rate = 5 // rps ... requests per second
         val seconds = 20 // how long we expect to take to send our requests
         val totalRequests = (rate * seconds).toInt
-        val feederConfig = makeFeederConfig(serverConfig.parrotPort)
+        val feederConfig = makeFeederConfig(serverConfig.parrotPort, twitters(totalRequests))
 
         feederConfig.reuseFile = true
         feederConfig.requestRate = rate
         feederConfig.maxRequests = totalRequests
-        feederConfig.logSource = memoryLog(totalRequests)
         feederConfig.batchSize = 3
 
         val feeder = new ParrotFeeder(feederConfig)
@@ -127,11 +122,10 @@ class EndToEndSpec extends WordSpec with MustMatchers {
         val rate = 1 // rps ... requests per second
         val seconds = 20 // how long we expect to take to send our requests
         val totalRequests = (rate * seconds).toInt
-        val feederConfig = makeFeederConfig(serverConfig.parrotPort)
+        val feederConfig = makeFeederConfig(serverConfig.parrotPort, twitters(totalRequests))
 
         feederConfig.reuseFile = true
         feederConfig.requestRate = rate
-        feederConfig.logSource = memoryLog(totalRequests)
         feederConfig.duration = (seconds / 2).toInt.seconds
         feederConfig.batchSize = 3
 
@@ -144,7 +138,7 @@ class EndToEndSpec extends WordSpec with MustMatchers {
       }
     }
 
-  private[this] def waitForServer(done: Future[Void], seconds: Double) {
+  private[this] def waitForServer(done: Future[Unit], seconds: Double) {
     val duration = Duration.fromNanoseconds((seconds * Duration.NanosPerSecond.toDouble).toLong)
     try {
       Await.ready(done, duration)
@@ -162,8 +156,8 @@ class EndToEndSpec extends WordSpec with MustMatchers {
     result
   }
 
-  private[this] def memoryLog(totalRequests: Int) =
-    Some(new InMemoryLog(List.fill[String](totalRequests * 2)("twitter.com")))
+  private[this] def twitters(totalRequests: Int) =
+    List.fill[String](totalRequests * 2)("twitter.com")
 
   private[this] def waitUntilFirstRecord(server: ParrotServerImpl[ParrotRequest, HttpResponse],
     totalRequests: Int): Unit =
@@ -181,15 +175,8 @@ class EndToEndSpec extends WordSpec with MustMatchers {
     result.thriftServer = Some(new ThriftServerImpl)
     result.requestTimeoutInMs = 500
     result.reuseConnections = reuseConnections
-    result.transport = Some(new FinagleTransport(result))
+    result.transport = Some(FinagleTransportFactory(result))
     result.loadTestInstance = Some(new TestRecordProcessor(result.service.get, result))
-    result
-  }
-
-  private[this] def makeFeederConfig(parrotPort: Int): ParrotFeederConfig = {
-    val result = new Eval().apply[ParrotFeederConfig](TempFile.fromResourcePath(
-      "/test-feeder.scala"))
-    result.parrotPort = parrotPort
     result
   }
 }

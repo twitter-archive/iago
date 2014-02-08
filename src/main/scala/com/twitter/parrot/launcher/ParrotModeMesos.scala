@@ -31,11 +31,7 @@ import com.twitter.util.Config.fromRequired
 class ParrotModeMesos(config: ParrotLauncherConfig) extends ParrotMode(config) {
   private[this] val log = Logger.get(getClass)
   private[this] val logName = config.log.split("/").last
-  private[this] val user =
-    if (config.role.length() > 0)
-      config.role
-    else
-      System.getenv("USER")
+  private[this] val user = config.role
   override val logPath = "log/" + logName
   val proxy = new SMFProxy(config)
 
@@ -61,7 +57,7 @@ class ParrotModeMesos(config: ParrotLauncherConfig) extends ParrotMode(config) {
 
   def createJobs {
     config.parrotTasks foreach { task =>
-      proxy.createMesosJob(task, jobName, config.distDir)
+      proxy.createMesosJob(config.mesosJobname(task), jobName, config.distDir)
 
       // Mesos workaround to deal with race conditions with HDFS
       Thread.sleep(2000)
@@ -86,7 +82,7 @@ class ParrotModeMesos(config: ParrotLauncherConfig) extends ParrotMode(config) {
   override def kill {
     log.info("Killing Parrot job named: %s".format(jobName))
     config.parrotTasks foreach { task =>
-      proxy.killMesosJob(user, jobName, task)
+      proxy.killMesosJob(config.mesosJobname(task))
     }
     CommandRunner.shutdown()
   }
@@ -117,7 +113,7 @@ class ParrotModeMesos(config: ParrotLauncherConfig) extends ParrotMode(config) {
     symbols("hadoopConfig") = config.hadoopConfig
     symbols("maxPerHost") = config.maxPerHost.toString
     symbols("mesosCluster") = config.mesosCluster
-    symbols("mesosRamInMb") =
+    symbols("mesosServerRamInMb") = config.mesosServerRamInMb.getOrElse(
 
       /* When RSS (the Resident Set Size) exceeds mesosRamInMb the Mesos job is killed. The
          following voodoo is based on the assumption that RSS and Xmx (the maximum heap
@@ -133,9 +129,16 @@ class ParrotModeMesos(config: ParrotLauncherConfig) extends ParrotMode(config) {
            mesosRam/400 + 364 = mesosRam - Xmx
       */
 
-      config.mesosRamInMb.getOrElse(400 * (config.serverXmx + 364) / 399).toString
+      400 * (config.serverXmx + 364) / 399).toString
 
-    symbols("numCpus") = config.numCpus.toString
+    symbols("mesosFeederRamInMb") = config.mesosFeederRamInMb.getOrElse(
+        
+        // a 3 gigabyte kludge factor
+        
+      config.feederXmx + 3000).toString
+
+    symbols("mesosServerNumCpus") = config.mesosServerNumCpus.toString
+    symbols("mesosFeederNumCpus") = config.mesosFeederNumCpus.toString
     symbols("serverDiskInMb") = config.serverDiskInMb.toString
 
     symbols("statlogger") = """ :: new LoggerFactory(

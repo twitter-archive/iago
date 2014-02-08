@@ -18,14 +18,19 @@ package com.twitter.parrot.feeder
 import com.hadoop.compression.lzo.LzopCodec
 import java.io.FileInputStream
 import org.apache.hadoop.conf.Configuration
+import com.twitter.logging.Logger
+import org.apache.hadoop.io.compress.CompressionInputStream
 
 class LzoFileLogSource(filename: String) extends LogSource {
+  
+  private[this] val log = Logger.get(getClass.getName)
+  private[this] val codec = new LzopCodec
+  codec.setConf(new Configuration)
+  private[this] var decompressedStream: CompressionInputStream = null
   private[this] var source = init()
 
   private[this] def init(): Iterator[String] = {
-    val codec = new LzopCodec
-    codec.setConf(new Configuration)
-    val decompressedStream = codec.createInputStream(new FileInputStream(filename))
+    decompressedStream = codec.createInputStream(new FileInputStream(filename))
     io.Source.fromInputStream(decompressedStream)("UTF-8").getLines()
   }
 
@@ -33,6 +38,12 @@ class LzoFileLogSource(filename: String) extends LogSource {
   def hasNext: Boolean = source.hasNext
 
   def reset() {
+    try {
+      decompressedStream.close()
+    } catch {
+      case e: Throwable =>
+        log.warning("Exception %s thrown while closing the log %s", e, filename)
+    }
     source = init()
   }
 }

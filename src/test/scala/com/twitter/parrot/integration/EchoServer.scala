@@ -22,15 +22,17 @@ import com.twitter.finagle.thrift.ThriftServerFramedCodec
 import com.twitter.util.Future
 import com.twitter.logging.Logger
 import com.twitter.parrot.thrift.EchoService
+import com.twitter.parrot.thrift.EchoService.FutureIface
 import java.util.concurrent.atomic.AtomicInteger
 
 object EchoServer {
   val log = Logger.get(getClass)
   val requestCount = new AtomicInteger(0)
+  var server: Server = null
 
   def serve(port: Int) {
     // Implement the Thrift Interface
-    val processor = new EchoService.ServiceIface {
+    val processor = new FutureIface {
       def echo(message: String) = {
         log.info("echoing message: %s", message)
         requestCount.incrementAndGet
@@ -39,14 +41,16 @@ object EchoServer {
     }
 
     // Convert the Thrift Processor to a Finagle Service
-    val service = new EchoService.Service(processor, new TBinaryProtocol.Factory())
+    val service = new EchoService.FinagledService(processor, new TBinaryProtocol.Factory())
 
-    val server: Server = ServerBuilder()
+    server = ServerBuilder()
       .bindTo(new InetSocketAddress(port))
       .codec(ThriftServerFramedCodec())
       .name("thriftserver")
       .build(service)
   }
+  
+  def close = server.close()
 
   def getRequestCount = requestCount.get
 }

@@ -18,18 +18,17 @@ package com.twitter.parrot.server
 import com.twitter.finagle.thrift.ThriftClientRequest
 import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
-import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util._
 import java.net.ConnectException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 
-class RequestQueue[Req <: ParrotRequest, Rep](config: ParrotServerConfig[Req, Rep]) {
+class RequestQueue[Req <: ParrotRequest, Rep](
+    consumer: RequestConsumer[Req, Rep],
+    transport: ParrotTransport[Req, Rep]
+) {
 
   private[this] val log = Logger.get(getClass)
-  private[this] val consumer = new RequestConsumer[Req](config)
-
-  private[this] lazy val transport = config.transport.getOrElse(throw new Exception("Unconfigured transport"))
 
   def addRequest(request: Req): Future[Rep] = {
     val response = new Promise[Rep]()

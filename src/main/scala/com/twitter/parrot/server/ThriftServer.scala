@@ -17,16 +17,12 @@ package com.twitter.parrot.server
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.builder.{ ServerBuilder, Server }
-import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.finagle.thrift.ThriftServerFramedCodec
 import com.twitter.logging.Logger
-import com.twitter.ostrich.admin.BackgroundProcess
 import com.twitter.parrot.thrift.{ ParrotState, ParrotStatus, ParrotServerService }
 import java.net.InetSocketAddress
-import java.util.logging.{ Logger => JLogger }
 import org.apache.thrift.protocol.TBinaryProtocol
-import org.apache.thrift.server.TThreadPoolServer
-import org.apache.thrift.transport.TServerSocket
+import com.twitter.finagle.zipkin.thrift.ZipkinTracer
 
 trait ThriftServer {
   def start(server: ParrotServer[_, _], port: Int)
@@ -35,18 +31,19 @@ trait ThriftServer {
 
 class ThriftServerImpl extends ThriftServer {
   private[this] val log = Logger.get(getClass.getName)
-  val unknownStatus = new ParrotStatus().setStatus(ParrotState.UNKNOWN).setLinesProcessed(0)
+  val unknownStatus = ParrotStatus(status = Some(ParrotState.Unknown), linesProcessed = Some(0))
 
-  var service: ParrotServerService.Service = null
+  var service: ParrotServerService.FinagledService = null
   var server: Server = null
 
   def start(parrotServer: ParrotServer[_, _], port: Int) {
     try {
-      service = new ParrotServerService.Service(parrotServer, new TBinaryProtocol.Factory())
+      service = new ParrotServerService.FinagledService(parrotServer, new TBinaryProtocol.Factory())
       server = ServerBuilder()
         .bindTo(new InetSocketAddress(port))
         .codec(ThriftServerFramedCodec())
-        .name("finagle thrift server")
+        .name("Parrot")
+        .tracer(ZipkinTracer.mk())
 
         // This is for looking at parrot-feeder to parrot-server finagle metrics. Enable only for
         // debugging purposes.
@@ -55,7 +52,7 @@ class ThriftServerImpl extends ThriftServer {
         //        .reportTo(new OstrichStatsReceiver)
 
         .build(service)
-        
+
       log.trace("created a parrot server on port %d", port)
     } catch {
       case e: Exception =>

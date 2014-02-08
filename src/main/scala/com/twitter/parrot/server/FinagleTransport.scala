@@ -19,6 +19,7 @@ package com.twitter.parrot.server
 import collection.mutable
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.http.Http
+import com.twitter.finagle.zipkin.thrift.ZipkinTracer
 import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.finagle.{ ServiceFactory, Service }
 import com.twitter.parrot.config.ParrotServerConfig
@@ -31,42 +32,53 @@ import org.jboss.netty.handler.codec.http._
 import org.jboss.netty.util.CharsetUtil.UTF_8
 import com.twitter.util._
 
-class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
+object FinagleTransportFactory extends ParrotTransportFactory[ParrotRequest, HttpResponse] {
+  def apply(config: ParrotServerConfig[ParrotRequest, HttpResponse]) = {
+    val statsReceiver = new OstrichStatsReceiver
+
+    val builder = ClientBuilder()
+      .codec(Http())
+      .daemon(true)
+      .hostConnectionCoresize(config.hostConnectionCoresize)
+      .hostConnectionIdleTime(Duration(config.hostConnectionIdleTimeInMs, TimeUnit.MILLISECONDS))
+      .hostConnectionLimit(config.hostConnectionLimit)
+      .hostConnectionMaxIdleTime(Duration(config.hostConnectionMaxIdleTimeInMs, TimeUnit.MILLISECONDS))
+      .hostConnectionMaxLifeTime(Duration(config.hostConnectionMaxLifeTimeInMs, TimeUnit.MILLISECONDS))
+      .requestTimeout(Duration(config.requestTimeoutInMs, TimeUnit.MILLISECONDS))
+      .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
+      .keepAlive(true)
+      .reportTo(statsReceiver)
+      .tracer(ZipkinTracer.mk(statsReceiver = statsReceiver))
+
+    val builder2 = {
+      if (config.transportScheme == config.TransportScheme.HTTPS)
+        builder.tlsWithoutValidation()
+      else builder
+    }
+
+    val builder3 = config.victim.value match {
+      case config.HostPortListVictim(victims) => builder2.hosts(victims)
+      case config.ServerSetVictim(cluster)    => builder2.cluster(cluster)
+    }
+
+    val service =
+      if (config.reuseConnections)
+        FinagleService(new RefcountedService(builder3.build()))
+      else
+        FinagleServiceFactory(builder3.buildFactory())
+
+    new FinagleTransport(service, config.includeParrotHeader)
+  }
+}
+
+
+class FinagleTransport(service: FinagleServiceAbstraction, includeParrotHeader: Boolean)
   extends ParrotTransport[ParrotRequest, HttpResponse] {
-
-  private[this] val builder = ClientBuilder()
-    .codec(Http())
-    .hostConnectionCoresize(config.hostConnectionCoresize)
-    .hostConnectionIdleTime(Duration(config.hostConnectionIdleTimeInMs, TimeUnit.MILLISECONDS))
-    .hostConnectionLimit(config.hostConnectionLimit)
-    .hostConnectionMaxIdleTime(Duration(config.hostConnectionMaxIdleTimeInMs, TimeUnit.MILLISECONDS))
-    .hostConnectionMaxLifeTime(Duration(config.hostConnectionMaxLifeTimeInMs, TimeUnit.MILLISECONDS))
-    .requestTimeout(Duration(config.requestTimeoutInMs, TimeUnit.MILLISECONDS))
-    .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
-    .keepAlive(true)
-    .reportTo(new OstrichStatsReceiver)
-
-  private[this] val builder2 = {
-    if (config.transportScheme == config.TransportScheme.HTTPS)
-      builder.tlsWithoutValidation()
-    else builder
-  }
-
-  private[this] val builder3 = config.victim.value match {
-    case config.HostPortListVictim(victims) => builder2.hosts(victims)
-    case config.ServerSetVictim(cluster)    => builder2.cluster(cluster)
-  }
-
-  private[this] val service =
-    if (config.reuseConnections)
-      FinagleService(new RefcountedService(builder3.build()))
-    else
-      FinagleServiceFactory(builder3.buildFactory())
 
   var allRequests = 0
   override def stats(response: HttpResponse) = Seq(response.getStatus.getCode.toString)
 
-  override def sendRequest(request: ParrotRequest): Future[HttpResponse] = {
+  override protected[server] def sendRequest(request: ParrotRequest): Future[HttpResponse] = {
     val requestMethod = request.method match {
       case "POST" => HttpMethod.POST
       case _      => HttpMethod.GET
@@ -81,7 +93,9 @@ class FinagleTransport(config: ParrotServerConfig[ParrotRequest, HttpResponse])
       case (name, value) => name + "=" + value
     } mkString (";"))
     httpRequest.setHeader("User-Agent", "com.twitter.parrot")
-    httpRequest.setHeader("X-Parrot", "true")
+    if (includeParrotHeader) {
+      httpRequest.setHeader("X-Parrot", "true")
+    }
     httpRequest.setHeader("X-Forwarded-For", randomIp)
 
     if (request.method == "POST" && request.body.length > 0) {

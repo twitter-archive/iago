@@ -41,80 +41,82 @@ import com.twitter.util.Time
 class MemcacheTransportSpec extends WordSpec with MustMatchers {
   implicit def stringToChannelBuffer(s: String) = ChannelBuffers.wrappedBuffer(s.getBytes)
 
-  "Memcache Transport" should {
-    "work inside a server config" in {
-      val victimPort = RandomSocket.nextPort()
-      val serverConfig = makeServerConfig(victimPort)
-      val server: ParrotServer[ParrotRequest, Response] = new ParrotServerImpl(serverConfig)
-      server must not be null
-    }
-
-    "send requests to a Memcache service" in {
-      val victimPort = RandomSocket.nextPort()
-      val serverConfig = makeServerConfig(victimPort)
-      val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
-
-      val server = new MemcacheServer(new InetSocketAddress(victimPort))
-      server.start()
-
-      val script = List[(String, Response)](
-        "set mah-key 0 0 8\r\nDEADBEEF" -> Stored(),
-        "set mah-other-key 0 0 8\r\nABADCAFE" -> Stored(),
-        "get mah-key\r\n" -> Values(List(Value("mah-key", "DEADBEEF", None, Some("0")))),
-        "gets mah-key mah-other-key\r\n" -> Values(List(Value("mah-key", "DEADBEEF", None, Some("0")),
-          Value("mah-other-key", "ABADCAFE", None, Some("0")))))
-      script.foreach {
-        case (rawCommand, expectedResponse) =>
-          val request = new ParrotRequest(rawLine = rawCommand)
-          val resp: Response = transport.sendRequest(request).get()
-          resp must be(expectedResponse)
+  if(!sys.props.contains("SKIP_FLAKY")) {
+    "Memcache Transport" should {
+      "work inside a server config" in {
+        val victimPort = RandomSocket.nextPort()
+        val serverConfig = makeServerConfig(victimPort)
+        val server: ParrotServer[ParrotRequest, Response] = new ParrotServerImpl(serverConfig)
+        server must not be null
       }
-      server.stop()
-    }
-  }
 
-  "MemcacheCommandExtractor" should {
-    "parse GET commands" in {
-      MemcacheCommandExtractor.unapply("GET FOO\r\n") must be(Some(Get(Seq("FOO"))))
-      MemcacheCommandExtractor.unapply("get foo\r\n") must be(Some(Get(Seq("foo"))))
-      MemcacheCommandExtractor.unapply("get foo") must be(Some(Get(Seq("foo"))))
-      MemcacheCommandExtractor.unapply("get  foo  \r\n") must be(Some(Get(Seq("foo"))))
+      "send requests to a Memcache service" in {
+        val victimPort = RandomSocket.nextPort()
+        val serverConfig = makeServerConfig(victimPort)
+        val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
 
-      MemcacheCommandExtractor.unapply("get foo bar\r\n") must be(Some(Get(Seq("foo", "bar"))))
-      MemcacheCommandExtractor.unapply("get foo bar") must be(Some(Get(Seq("foo", "bar"))))
-      MemcacheCommandExtractor.unapply("get  foo  bar  \r\n") must be(Some(Get(Seq("foo", "bar"))))
+        val server = new MemcacheServer(new InetSocketAddress(victimPort))
+        server.start()
 
-      MemcacheCommandExtractor.unapply("get") must be(None)
-      MemcacheCommandExtractor.unapply("get ") must be(None)
-    }
-
-    "parse GETS commands" in {
-      MemcacheCommandExtractor.unapply("GETS FOO\r\n") must be(Some(Gets(Seq("FOO"))))
-      MemcacheCommandExtractor.unapply("gets foo\r\n") must be(Some(Gets(Seq("foo"))))
-      MemcacheCommandExtractor.unapply("gets foo") must be(Some(Gets(Seq("foo"))))
-      MemcacheCommandExtractor.unapply("gets  foo  \r\n") must be(Some(Gets(Seq("foo"))))
-
-      MemcacheCommandExtractor.unapply("gets FOO BAR\r\n") must be(Some(Gets(Seq("FOO", "BAR"))))
-      MemcacheCommandExtractor.unapply("gets foo bar\r\n") must be(Some(Gets(Seq("foo", "bar"))))
-      MemcacheCommandExtractor.unapply("gets foo bar") must be(Some(Gets(Seq("foo", "bar"))))
-      MemcacheCommandExtractor.unapply("gets  foo  bar  \r\n") must be(Some(Gets(Seq("foo", "bar"))))
-
-      MemcacheCommandExtractor.unapply("gets") must be(None)
-      MemcacheCommandExtractor.unapply("gets ") must be(None)
+        val script = List[(String, Response)](
+          "set mah-key 0 0 8\r\nDEADBEEF" -> Stored(),
+          "set mah-other-key 0 0 8\r\nABADCAFE" -> Stored(),
+          "get mah-key\r\n" -> Values(List(Value("mah-key", "DEADBEEF", None, Some("0")))),
+          "gets mah-key mah-other-key\r\n" -> Values(List(Value("mah-key", "DEADBEEF", None, Some("0")),
+            Value("mah-other-key", "ABADCAFE", None, Some("0")))))
+        script.foreach {
+          case (rawCommand, expectedResponse) =>
+            val request = new ParrotRequest(rawLine = rawCommand)
+            val resp: Response = transport.sendRequest(request).get()
+            resp must be(expectedResponse)
+        }
+        server.stop()
+      }
     }
 
-    "parse SET commands" in {
-      MemcacheCommandExtractor.unapply("SET FOO 0 0 8\r\n12345678") must
-        be(Some(Set("FOO", 0, Time.fromSeconds(0), "12345678")))
+    "MemcacheCommandExtractor" should {
+      "parse GET commands" in {
+        MemcacheCommandExtractor.unapply("GET FOO\r\n") must be(Some(Get(Seq("FOO"))))
+        MemcacheCommandExtractor.unapply("get foo\r\n") must be(Some(Get(Seq("foo"))))
+        MemcacheCommandExtractor.unapply("get foo") must be(Some(Get(Seq("foo"))))
+        MemcacheCommandExtractor.unapply("get  foo  \r\n") must be(Some(Get(Seq("foo"))))
 
-      MemcacheCommandExtractor.unapply("set foo 123 100 8\r\n12345678") must
-        be(Some(Set("foo", 123, Time.fromSeconds(100), "12345678")))
+        MemcacheCommandExtractor.unapply("get foo bar\r\n") must be(Some(Get(Seq("foo", "bar"))))
+        MemcacheCommandExtractor.unapply("get foo bar") must be(Some(Get(Seq("foo", "bar"))))
+        MemcacheCommandExtractor.unapply("get  foo  bar  \r\n") must be(Some(Get(Seq("foo", "bar"))))
 
-      MemcacheCommandExtractor.unapply("set foo 123 100 10\r\n1234\r\n5678") must
-        be(Some(Set("foo", 123, Time.fromSeconds(100), "1234\r\n5678")))
+        MemcacheCommandExtractor.unapply("get") must be(None)
+        MemcacheCommandExtractor.unapply("get ") must be(None)
+      }
 
-      MemcacheCommandExtractor.unapply("set foo 0 0 100\r\n12345678") must be(None)
-      MemcacheCommandExtractor.unapply("set foo 0 0\r\n1234") must be(None)
+      "parse GETS commands" in {
+        MemcacheCommandExtractor.unapply("GETS FOO\r\n") must be(Some(Gets(Seq("FOO"))))
+        MemcacheCommandExtractor.unapply("gets foo\r\n") must be(Some(Gets(Seq("foo"))))
+        MemcacheCommandExtractor.unapply("gets foo") must be(Some(Gets(Seq("foo"))))
+        MemcacheCommandExtractor.unapply("gets  foo  \r\n") must be(Some(Gets(Seq("foo"))))
+
+        MemcacheCommandExtractor.unapply("gets FOO BAR\r\n") must be(Some(Gets(Seq("FOO", "BAR"))))
+        MemcacheCommandExtractor.unapply("gets foo bar\r\n") must be(Some(Gets(Seq("foo", "bar"))))
+        MemcacheCommandExtractor.unapply("gets foo bar") must be(Some(Gets(Seq("foo", "bar"))))
+        MemcacheCommandExtractor.unapply("gets  foo  bar  \r\n") must be(Some(Gets(Seq("foo", "bar"))))
+
+        MemcacheCommandExtractor.unapply("gets") must be(None)
+        MemcacheCommandExtractor.unapply("gets ") must be(None)
+      }
+
+      "parse SET commands" in {
+        MemcacheCommandExtractor.unapply("SET FOO 0 0 8\r\n12345678") must
+          be(Some(Set("FOO", 0, Time.fromSeconds(0), "12345678")))
+
+        MemcacheCommandExtractor.unapply("set foo 123 100 8\r\n12345678") must
+          be(Some(Set("foo", 123, Time.fromSeconds(100), "12345678")))
+
+        MemcacheCommandExtractor.unapply("set foo 123 100 10\r\n1234\r\n5678") must
+          be(Some(Set("foo", 123, Time.fromSeconds(100), "1234\r\n5678")))
+
+        MemcacheCommandExtractor.unapply("set foo 0 0 100\r\n12345678") must be(None)
+        MemcacheCommandExtractor.unapply("set foo 0 0\r\n1234") must be(None)
+      }
     }
   }
 
@@ -123,8 +125,7 @@ class MemcacheTransportSpec extends WordSpec with MustMatchers {
       TempFile.fromResourcePath("/test-memcache.scala"))
     result.parrotPort = RandomSocket().getPort
     result.victim = result.HostPortListVictim("localhost:" + victimPort)
-    result.transport = Some(new MemcacheTransport(result))
-    result.queue = Some(new RequestQueue(result))
+    result.transport = Some(MemcacheTransportFactory(result))
     result
   }
 }

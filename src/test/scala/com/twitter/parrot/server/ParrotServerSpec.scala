@@ -15,7 +15,6 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
-import java.util.ArrayList
 import java.util.concurrent.TimeUnit
 import org.jboss.netty.handler.codec.http.HttpResponse
 import org.junit.runner.RunWith
@@ -43,9 +42,9 @@ class ParrotServerSpec extends WordSpec with MustMatchers with OneInstancePerTes
   server.start()
 
   "ParrotServer" should {
-    val emptyLines = new ArrayList[String]()
-    val defaultLines = new ArrayList[String]()
-    defaultLines.add("/search.json?q=%23playerofseason&since_id=68317051210563584&rpp=30")
+    val emptyLines = Seq[String]()
+    val defaultLines = Seq[String](
+      "/search.json?q=%23playerofseason&since_id=68317051210563584&rpp=30")
 
     def resolve[A](future: Future[A]): A = {
       future.get(Duration(1000, TimeUnit.MILLISECONDS)) match {
@@ -56,19 +55,19 @@ class ParrotServerSpec extends WordSpec with MustMatchers with OneInstancePerTes
 
     "not try to do anything with an empty list" in {
       val response = resolve(server.sendRequest(emptyLines))
-      response.getLinesProcessed must be(0)
+      response.linesProcessed must be(Some(0))
     }
 
     "allow us to send a single, valid request" in {
       val response = resolve(server.sendRequest(defaultLines))
-      response.getLinesProcessed must be(1)
+      response.linesProcessed must be(Some(1))
       eventually { transport.sent must be(1) }
     }
 
     "support being paused and resumed" in {
       server.pause()
       val response = resolve(server.sendRequest(defaultLines))
-      response.status must be(ParrotState.PAUSED)
+      response.status must be(Some(ParrotState.Paused))
       transport.sent must be(0)
 
       server.resume()
@@ -81,7 +80,7 @@ class ParrotServerSpec extends WordSpec with MustMatchers with OneInstancePerTes
       server.shutdown()
 
       val response = resolve(server.sendRequest(defaultLines))
-      response.status must be(ParrotState.SHUTDOWN)
+      response.status must be(Some(ParrotState.Shutdown))
       // transport.sent must be(1)
     }
   }

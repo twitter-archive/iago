@@ -15,10 +15,10 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
+import com.twitter.finagle.Service
 import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
-import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.util.{ RequestDistribution }
+import com.twitter.parrot.util.RequestDistribution
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
 import com.twitter.util.Promise
@@ -26,8 +26,12 @@ import com.twitter.util.Await
 import com.twitter.util.Stopwatch
 import com.twitter.parrot.util.PrettyDuration
 
-class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _]) extends Thread {
-
+class RequestConsumer[Req <: ParrotRequest, Rep](
+    distributionFactory: Int => RequestDistribution,
+    transport: Service[Req, Rep]
+)
+  extends Thread
+{
   private[this] val log = Logger.get(getClass)
   private[this] val queue = new LinkedBlockingQueue[Req]()
   private[this] var rate: Int = 1
@@ -35,10 +39,8 @@ class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _]) 
 
   val started = Promise[Unit]
 
-  def createDistribution = config.createDistribution(rate)
-
   private[this] val process =
-    new AtomicReference[RequestDistribution](createDistribution)
+    new AtomicReference[RequestDistribution](distributionFactory(rate))
 
   private[server] var totalClockError = 0L
 
@@ -80,7 +82,6 @@ class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _]) 
   }
 
   private def send(request: Req) {
-    val transport = config.transport.getOrElse(throw new Exception("unspecified transport"))
     try {
       val future = transport(request)
       Stats.incr("requests_sent")
@@ -129,7 +130,7 @@ class RequestConsumer[Req <: ParrotRequest](config: ParrotServerConfig[Req, _]) 
 
   def setRate(newRate: Int) {
     rate = newRate
-    process.set(createDistribution)
+    process.set(distributionFactory(rate))
   }
 
   def shutdown: Unit = {

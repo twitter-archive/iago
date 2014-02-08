@@ -24,6 +24,7 @@
 	- <a href="#sending_large_messages">Sending Large Messages</a>
 * <a href="#weighted_requests">Weighted Requests</a>
 * <a href="#metrics">Metrics</a>
+* <a href="#tracing">Tracing</a>
 * <a href="#artifacts">What Files Are Created?</a>
 * <a href="#ChangeLog">ChangeLog</a>
 * <a href="#Contributing">Contributing to Iago</a>
@@ -110,8 +111,6 @@ For replay, Iago recommends you scrub your logs to only include requests which m
 
 * **Idempotent**, meaning that re-execution of a transaction any number of times yields the same result as the initial execution.
 * **Commutative**, meaning that transaction order is not important. Although transactions are initiated in replay order, Iago's internal behavior may change the actual execution order to guarantee the transaction rate. Also, transactions that implement `Future` responses are executed asynchronously. You can achieve ordering, if required, by using Iago as a library and initiating new requests in response to previous ones. Examples of this are available.
-
-Unless you change your configuration's <code>reuseFile</code> parameter, make sure that your sample log has at least 1000 items.
 
 [Top](#Top)
 
@@ -374,7 +373,7 @@ new ParrotLauncherConfig {
 
   imports = "import com.twitter.example.EchoLoadTest"
   responseType = "Array[Byte]"
-  transport = "ThriftTransport"
+  transport = "ThriftTransportFactory(this)"
   loadTest = "new EchoLoadTest(service.get)"
 }
 ```
@@ -396,17 +395,21 @@ You can specify any of the following parameters:
     <td><code>createDistribution</code></td>
     <td><p>You can use this field to create your own distribution rate, instead of having a constant flow. You will need to create a subclass of RequestDistribution and import it.</p>
     <p><b>Example: </b><pre>createDistribution = """createDistribution = {
-    rate => new MyDistribution(rate)
+  rate => new MyDistribution(rate)
 }"""</pre></p></td>
     <td><i>""</i></td>
 </tr>
 
 <tr>
-    <td><code>customLogSource</code></td>
-    <td><p>A string with Scala code that will be put into the Feeder config</p>
-    <p><b>Example: </b><code>customLogSource = "FILL IN HERE"</code></p></td>
-    <td><i>""</i></td>
-</tr>
+<td><code>customLogSource</code></td> <td><p>A string with Scala code that will be put into the
+    Feeder config. You can use this to get Iago to read in compressed files. Iago can read LZO
+    compressed files using its built-in LzoFileLogSource.</p>
+    <p><b>Example:</b><pre>customLogSource = """
+  if(inputLog.endsWith(".lzo")) {
+    logSource = Some(new com.twitter.parrot.feeder.LzoFileLogSource(inputLog))
+  }"""
+    </pre></p></td> <td><i>""</i></td>
+    </tr>
 
 <tr>
     <td><code>distDir</code></td>
@@ -427,6 +430,13 @@ You can specify any of the following parameters:
     <td><p>An integer value that specifies the time to run the test in <code>timeUnit</code> units.</p>
     <p><b>Example: </b><code>duration = 5</code></p></td>
     <td><code>&nbsp;</code></td>
+</tr>
+
+<tr>
+    <td><code>feederXmx</code></td>
+    <td><p>Defines feeder heap size. Suggested not to be higher than 4 GB (will cause issues scheduling)</p>
+    <p><b>Example: </b><code>feederXmx = 2048</code></p></td>
+    <td><i>1744</i></td>
 </tr>
 
 <tr>
@@ -545,7 +555,7 @@ new ParrotLauncherConfig {
 
 <tr>
     <td><code>serverXmx</code></td>
-    <td><p>Defines heap size. Suggested not to be higher than 8 GB (will cause issues scheduling)</p>
+    <td><p>Defines server heap size. Suggested not to be higher than 8 GB (will cause issues scheduling)</p>
     <p><b>Example: </b><code>serverXmx = 5000</code></p></td>
     <td><i>4000</i></td>
 </tr>
@@ -592,10 +602,7 @@ new ParrotLauncherConfig {
     <td><code>traceLevel</code></td>
     <td><p>A <code>com.twitter.logging.Level</code> subclass. Controls the level of "debug logging" for servers and feeders.</p>
     <p><b>Example:</b>
-<pre>import com.twitter.logging.Level
- &hellip;
- traceLevel = Level.ALL // My Finagle test doesn't work, so record ALL the debug logs
- &hellip;</pre>
+<pre>traceLevel = com.twitter.logging.Level.TRACE</pre>
 </p></td>
     <td><code>Level.INFO</code></td>
 </tr>
@@ -609,7 +616,9 @@ new ParrotLauncherConfig {
 </tbody>
 </table>
 
-#### [Specifying Victims](id:Specifying_Victims)
+<a name="Specifying_Victims"></a>
+
+#### [Specifying Victims]
 
 The point of Iago is to load-test a service. Iago calls these "victims".
 
@@ -669,7 +678,9 @@ Note that ParrotUdpTransport can only handle a single host:port pair. The other 
 </tr>
 </table>
 
-#### [Extension Point Parameters](id:extension_point_parameters)
+<a name="extension_point_parameters"></a>
+
+#### [Extension Point Parameters]
 
 <p><strong>Alternative Use:</strong> You can specify the following <em>extension point</em> parameters to configure projects in which Iago is used as both a feeder and server. The Iago feeder provides the log lines to your project, which uses these log lines to form requests that the Iago server then handles:</p>
 
@@ -712,10 +723,13 @@ Note that ParrotUdpTransport can only handle a single host:port pair. The other 
     <td><code>HttpResponse</code></td>
 </tr>
 <tr>
-    <td><code>transport</code></td>
-    <td><p>The kind of transport to the server, which matches the <code>responseType</code> you want. </code></p>
-    <p><b>Example: </b>The Thrift Transport will send your request and give back <code>Future[Array[Byte]]</code>.</p></td>
-    <td><code>FinagleTransport</code></td>
+  <td><code>transport</code></td>
+  <td>
+    <p>The kind of transport to the server, which matches the <code>responseType</code> you want.</p>
+    <p><b>Example:</b><code>transport = "ThriftTransportFactory(this)"</code></p>
+    <p>The Thrift Transport will send your request and give back <code>Future[Array[Byte]]</code>.</p>
+  </td>
+  <td><code>FinagleTransport</code></td>
 </tr>
 <tr>
     <td><code>loadTest</code></td>
@@ -728,9 +742,11 @@ Note that ParrotUdpTransport can only handle a single host:port pair. The other 
 
 [Top](#Top)
 
-#### [Sending Large Messages](id:sending_large_messages)
+<a name="sending_large_messages"></a>
 
-By default, the parrot feeder sends a thousand messages at a time to each connected parrot server until the parrot server has one minutes worth of data. This is a good strategy when messages are small (less than a kilobyte). When messages are large, the parrot server will run out of memory. Consider an average message size of 100k, then the feeder will be maintaining an output queue for each connected parrot server of 100 million bytes. For the parrot server, consider a request rate of 2000, then 2000 * 60 * 100k = 12 gigabytes (at least). The following parameters help with large messages: 
+#### [Sending Large Messages]
+
+By default, the parrot feeder sends a thousand messages at a time to each connected parrot server until the parrot server has twenty seconds worth of data. This is a good strategy when messages are small (less than a kilobyte). When messages are large, the parrot server will run out of memory. Consider an average message size of 100k, then the feeder will be maintaining an output queue for each connected parrot server of 100 million bytes. For the parrot server, consider a request rate of 2000, then 2000 * 20 * 100k = 4 gigabytes (at least). The following parameters help with large messages:
 
 <table border="1" cellpadding="6">
 <thead>
@@ -757,13 +773,17 @@ By default, the parrot feeder sends a thousand messages at a time to each connec
 
 [Top](#Top)
 
-## [Weighted Requests](id:weighted_requests)
+<a name="weighted_requests"></a>
+
+#### [Weighted Requests]
 
 Some applications must make bulk requests to their service. In other words, a single meta-request in the input log may result in several requests being satisfied by the victim. A weight field to ParrotRequest was added so that the RecordProcessor can set and use that weight to control the send rate in the RequestConsumer. For example, a request for 17 messages would be given a weight of 17 which would cause the RequestConsumer to sample the request distribution 17 times yielding a consistent distribution of load on the victim.
 
 [Top](#Top)
 
-## [Metrics](id:metrics)
+<a name="metrics"></a>
+
+## [Metrics]
 
 Iago uses [Ostrich](https://github.com/twitter/ostrich) to record its metrics. Iago is configured so that a simple graph server is available as long as the parrot server is running. If you are using localMode=true, then the default place for this is
 
@@ -774,6 +794,7 @@ One metric of particular interest is
 &nbsp;&nbsp;[http://localhost:9994/graph/?g=metric:client/request_latency_ms](http://localhost:9994/graph/?g=metric:client/request_latency_ms)
 
 Request latency is the time it takes to queue the request for sending until the response is received. See the [Finagle User Guide](http://twitter.github.io/finagle/guide/Metrics.html) for more about the individual metrics.
+
 
 Other metrics of interest:
 
@@ -827,13 +848,34 @@ Other metrics of interest:
 <tr>
 </table>
 
-Iago stats files (or any set of Finagle stats) can also be viewed using [Raggiana: A simple standalone Finagle stats viewer](https://github.com/twitter/raggiana).
 
-You can also use Raggiana directly at [http://twitter.github.io/raggiana](http://twitter.github.io/raggiana).
+### [Raggiana]
+
+Raggiana is a simple standalone Finagle stats viewer.
+
+You can use Raggiana to view the stats log, <a href="#artifacts">parrot-server-stats.log</a>, generated by Iago.
+
+You can clone it from
+
+https://github.com/twitter/raggiana
+
+or, just use it directly at
+
+http://twitter.github.io/raggiana
 
 [Top](#Top)
 
-## [What Files Are Created?](id:artifacts)
+<a name="tracing"></a>
+
+## [Tracing]
+
+Parrot works with [Zipkin](http://twitter.github.io/zipkin/), a distributed tracing system.
+
+[Top](#Top)
+
+<a name="artifacts"></a>
+
+## [What Files Are Created?]
 
 The Iago launcher creates the following files
 
@@ -854,16 +896,113 @@ The Iago server creates
 	parrot-server-stats.log
 	gc-server.log 
 
-The logs are rotated by size. Each individual log can be up to 100 megabytes before being rotated. The are 6 rotations maintained.
+The logs are rotated by size. Each individual log can be up to 100 megabytes before being rotated. There are 6 rotations maintained.
 
-The stats log, `parrot-server-stats.log`, is a minute-by-minute dump of all the statistics maintained by the Iago server. Each entry
-is for the time period since the previous one. That is, all entries in `parrot-server-stats.log` need to be accumulated to match the
-final values reported by [http://localhost:9994/stats.txt](http://localhost:9994/stats.txt).
-
+The stats log, `parrot-server-stats.log`, is a minute-by-minute dump of all the statistics (or <a
+href="#metrics">Metrics</a>) maintained by the Iago server. Each entry is for the time period since
+the previous one. That is, all entries in `parrot-server-stats.log` need to be accumulated to match
+the final values reported by [http://localhost:9994/stats.txt](http://localhost:9994/stats.txt).
 
 [Top](#Top)
 
-## [ChangeLog](id:ChangeLog)
+## Using Iago as a Library
+
+While Iago provides everything you need to target your API with a large distributed loadtest with just a small log processor,
+it also exposes a library of classes for log processing, traffic replay, & load generation. These can be used in your Iago configuration or incorporated in your application as a library.
+
+parrot/server:
+
+* ParrotRequest: Parrot's internal representation of a request
+* ParrotTransport (FinagleTransport, KestrelTransport, MemcacheTransport, ParrotUdpTransport, ThriftTransport): Interchangeable transport layer for requests to be sent. Parrot contains transport implementations for the following protocols: HTTP (FinagleTransport), Kestrel, Memcache, raw UDP and Thrift.
+* RequestConsumer: Queues ParrotRequests and sends them out on a ParrotTransport at a rate determined by RequestDistribution
+* RequestQueue: A wrapper/control layer for RequestConsumer
+* ParrotService (ParrotThriftService): Enqueues ParrotRequests to a RequestQueue. ParrotThriftService implements finagle's Service interface for use with finagle thrift clients.
+
+parrot/util:
+
+* RequestDistribution: A function specifying the time to arrival of the next request, used to control the request rate. Instances include
+	* UniformDistribution: Sends requests at a uniform rate
+	* PoissonProcess: Sends requests at approximatly constant rate randomly varying using a poisson process. This is the default.
+	* SinusoidalPoissonProcess: Like PoissonProcess but varying the rate sinusoidally.
+	* SlowStartPoissonProcess: Same as PoissonProcess but starting with a gradual ramp from initial rate to final rate. It will then hold steady at the final rate until time runs out.
+	* InfiniteRampPoissonProcess: a two staged ramped distribution. Ideal for services that need a warm-up period before ramping up. The rate continues to increase until time runs out.
+
+You may also find the LogSource and RequestProcessor interfaces discussed earlier useful.
+
+Examples:
+<pre>
+// Make 1000 HTTP requests at a roughly constant rate of 10/sec
+
+// construct the transport and queue
+val client =
+  ClientBuilder()
+    .codec(http())
+    .hosts("twitter.com:80")
+    .build()
+val transport = new FinagleTransport(FinagleService(client))
+val consumer = new RequestConsumer(() => new PoissionProcess(10)
+// add 1000 requests to the queue
+for (i <- (1 to 1000)) {
+  consumer.offer(new ParrotRequest(uri= Uri("/jack/status/20", Nil))
+}
+// start sending
+transport.start()
+consumer.start()
+// wait for the comsumer to exhaust the queue
+while(consumer.size > 0) {
+  Thread.sleep(100)
+}
+// shutdown
+consumer.shutdown()
+transport.close()
+</pre>
+
+<pre>
+// Call a thrift service with a sinusoidally varying rate
+
+// Configure cluster for the service using zookeeper
+val zk = "zookeeper.example.com"
+val zkPort = 2181
+val path = "my/env/role/service"
+val zookeeperClient = new ZooKeeperClient(Amount.of(1, Time.SECONDS),
+  Seq(InetSocketAddress.createUnresolved(zk, zkPort)).asJava)
+val serverSet = new ServerSetImpl(zookeeperClient, path)
+val cluster = new ZookeeperServerSetCluster(serverSet)
+
+// create transport and queue
+val client =
+  ClientBuilder()
+    .codec(ThriftClientFramedCodec)
+    .cluster(cluster)
+    .build()
+val transport = new ThriftTransport(client)
+val createDistribution = () => new SinusoidalPoisionProccess(10, 20, 60.seconds)
+val queue = new RequestQueue(new RequestConsumer(createDistribution, transport), transport)
+// create the service and processor
+val service = transport.createService(queue)
+val processor = new EchoLoadTest(service)
+// start sending
+transport.start()
+consumer.start()
+// Fill the queue from a logfile
+val source = new LogSourceImpl("some_file.txt")
+while (source.hasNext) {
+  processor.processLines(Seq(source.next))
+}
+// wait for the comsumer to exhaust the queue
+while(consumer.size > 0) {
+  Thread.sleep(100)
+}
+// shutdown
+consumer.shutdown()
+transport.close()
+</pre>
+
+[Top](#Top)
+
+<a name="ChangeLog"></a>
+
+## [ChangeLog]
 
 2013-06-25  release 0.6.7
 
@@ -882,8 +1021,9 @@ final values reported by [http://localhost:9994/stats.txt](http://localhost:9994
 
 [Top](#Top)
 
-<a name="Contributing to Iago "></a>
-## [Contributing to Iago](id:Contributing)
+<a name="Contributing"></a>
+
+## [Contributing to Iago]
 
 Iago is open source, hosted on Github <a href="http://github.com/twitter/iago">here</a>.
 If you have a contribution to make, please fork the repo and submit a pull request.

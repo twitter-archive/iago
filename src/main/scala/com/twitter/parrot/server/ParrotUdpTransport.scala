@@ -29,10 +29,8 @@ import org.jboss.netty.channel.group.{ ChannelGroup, DefaultChannelGroup }
 import org.jboss.netty.channel.socket.nio.NioDatagramChannelFactory
 import org.jboss.netty.util.HashedWheelTimer
 import scala.collection.JavaConverters._
-import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.finagle.util.InetSocketAddressUtil
 
-abstract class ParrotUdpTransport[Rep](config: ParrotServerConfig[ParrotRequest, Rep]) extends ParrotTransport[ParrotRequest, Rep] {
+abstract class ParrotUdpTransport[Rep](victim: InetSocketAddress) extends ParrotTransport[ParrotRequest, Rep] {
 
   def requestEncoder: Option[ChannelDownstreamHandler]
   def responseDecoder: Option[ChannelUpstreamHandler] // N.B.: must decode to objects of type Rep
@@ -41,10 +39,6 @@ abstract class ParrotUdpTransport[Rep](config: ParrotServerConfig[ParrotRequest,
   val connectTimeout = 10.seconds
 
   val allRequests = new AtomicInteger(0)
-
-  val config.HostPortListVictim(victimsString) = config.victim.value
-  val victims = InetSocketAddressUtil.parseHosts(victimsString)
-  val victim = victims(0)
 
   val clientHandler = new SimpleChannelUpstreamHandler {
     private[this] def reply(message: Try[Rep], channel: Channel) {
@@ -85,11 +79,11 @@ abstract class ParrotUdpTransport[Rep](config: ParrotServerConfig[ParrotRequest,
 
   val timer = new FinagleTimer(new HashedWheelTimer(100, TimeUnit.MILLISECONDS))
 
-  protected[server] def sendRequest(request: ParrotRequest): Future[Rep] = {
+  override protected[server] def sendRequest(request: ParrotRequest): Future[Rep] = {
 
     val data = request.rawLine
 
-    log.debug("sending request: %s to %s", data, victimsString)
+    log.debug("sending request: %s to %s", data, victim.toString)
     allRequests.incrementAndGet()
 
     val connFuture = bootstrap.connect(victim)

@@ -31,6 +31,8 @@ import com.twitter.util.Future
 import com.twitter.util.Return
 import com.twitter.util.Throw
 import com.twitter.parrot.feeder.FeederState
+import com.twitter.finagle.zipkin.thrift.ZipkinTracer
+import com.twitter.finagle.stats.OstrichStatsReceiver
 
 class InternalCounter(var success: Int = 0, var failure: Int = 0) {
   def add(counter: InternalCounter) {
@@ -88,7 +90,7 @@ class RemoteParrot(val name: String,
     log.trace("RemoteParrot: rate set")
   }
 
-  def sendRequest(batch: java.util.List[String]): ParrotStatus = {
+  def sendRequest(batch: Seq[String]): ParrotStatus = {
     log.trace("RemoteParrot.sendRequest: parrot[%s:%d] sending requests of size=%d to the server",
       host,
       port,
@@ -135,17 +137,21 @@ class RemoteParrot(val name: String,
   def isBusy = queueDepth > targetDepth
 
   private[this] def connect(host: String, port: Int) = {
+    val statsReceiver = new OstrichStatsReceiver
+
     val service: Service[ThriftClientRequest, Array[Byte]] = ClientBuilder()
+      .tracer(ZipkinTracer.mk(statsReceiver))
       .hosts(new InetSocketAddress(host, port))
       .codec(ThriftClientFramedCodec())
+      .daemon(true)
       .hostConnectionLimit(1)
       .retries(2)
       // Enable only for debugging
-      //      .reportTo(new OstrichStatsReceiver)
+      //      .reportTo(statsReceiver)
       //      .logger(JLogger.getLogger("thrift"))
       .build()
 
-    val client = new ParrotServerService.ServiceToClient(service, new TBinaryProtocol.Factory())
+    val client = new ParrotServerService.FinagledClient(service, new TBinaryProtocol.Factory())
 
     (service, client)
   }

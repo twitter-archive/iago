@@ -25,6 +25,7 @@ import com.twitter.parrot.server.ParrotService
 import com.twitter.parrot.util.UriParser
 import com.twitter.util.Return
 import com.twitter.util.Throw
+import com.twitter.finagle.tracing.Trace
 
 /**
  * This processor just takes a line-separated list of URIs and turns them into requests, for instance:
@@ -42,19 +43,21 @@ class SimpleRecordProcessor(service: ParrotService[ParrotRequest, HttpResponse],
   def processLines(lines: Seq[String]) {
     log.trace("SimpleRecordProcessor.processLines: processing %d lines", lines.size)
     for (line <- lines) {
-      val p = UriParser(line)
-      log.trace("SimpleRecordProcessor.processLines: line is %s", line)
-      UriParser(line) match {
-        case Return(uri) =>
-          if (!uri.path.isEmpty && !line.startsWith("#"))
-            service(new ParrotRequest(hostHeader, Nil, uri, line))
-        case Throw(t) =>
-          if (exceptionCount < 3)
-            log.warning("exception\n\t%s\nwhile processing line\n\t%s", t.getMessage(), line)
-          else if (exceptionCount == 3) log.warning("more exceptions ...")
-          exceptionCount += 1
-          Stats.incr("bad_lines")
-          Stats.incr("bad_lines/" + t.getClass.getName)
+      Trace.traceService("Parrot", "SimpleRecordProcessor.processLines") {
+        val p = UriParser(line)
+        log.trace("SimpleRecordProcessor.processLines: line is %s", line)
+        UriParser(line) match {
+          case Return(uri) =>
+            if (!uri.path.isEmpty && !line.startsWith("#"))
+              service(new ParrotRequest(hostHeader, Nil, uri, line))
+          case Throw(t) =>
+            if (exceptionCount < 3)
+              log.warning("exception\n\t%s\nwhile processing line\n\t%s", t.getMessage(), line)
+            else if (exceptionCount == 3) log.warning("more exceptions ...")
+            exceptionCount += 1
+            Stats.incr("bad_lines")
+            Stats.incr("bad_lines/" + t.getClass.getName)
+        }
       }
     }
   }

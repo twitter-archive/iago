@@ -16,9 +16,6 @@ limitations under the License.
 package com.twitter.parrot.feeder
 
 import com.twitter.logging.Logger
-import com.twitter.parrot.thrift.{ ParrotServerService, ParrotState, ParrotStatus }
-import org.apache.thrift.protocol.TBinaryProtocol
-import org.apache.thrift.transport.TSocket
 import com.twitter.parrot.util.{ ParrotCluster, RemoteParrot }
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -72,7 +69,7 @@ class ParrotPoller(cluster: ParrotCluster, serverLatch: CountDownLatch) extends 
 
   private[this] def pollParrot(parrot: RemoteParrot) {
     val status = parrot.getStatus
-    parrot.queueDepth = status.queueDepth
+    parrot.queueDepth = status.queueDepth getOrElse 0d
     log.debug("pollParrot: depth is %f for %s:%d", parrot.queueDepth, parrot.host, parrot.port)
   }
 }

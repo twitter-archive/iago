@@ -35,15 +35,12 @@ import com.twitter.ostrich.admin.ServiceTracker
 import com.twitter.ostrich.admin.StatsFactory
 import com.twitter.ostrich.admin.TimeSeriesCollectorFactory
 import com.twitter.parrot.processor.RecordProcessor
-import com.twitter.parrot.server.ParrotRequest
-import com.twitter.parrot.server.ParrotServerImpl
-import com.twitter.parrot.server.ParrotTransport
-import com.twitter.parrot.server.RequestQueue
-import com.twitter.parrot.server.ThriftServer
+import com.twitter.parrot.server._
 import com.twitter.parrot.util.ParrotCluster
 import com.twitter.parrot.util.PoissonProcess
 import com.twitter.parrot.util.RequestDistribution
 import com.twitter.util.Config
+import org.apache.thrift.protocol.TProtocolFactory
 
 trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnvironment => Service]
   with ParrotCommonConfig
@@ -75,13 +72,12 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
     val HTTP = Value("http")
     val THRIFTS = Value("thrifts")
   }
-  
+
   var transportScheme = TransportScheme.HTTP
 
   var thriftServer: Option[ThriftServer] = None
   var clusterService: Option[ParrotCluster] = None
   var transport: Option[ParrotTransport[Req, Rep]] = None
-  var queue: Option[RequestQueue[Req, Rep]] = None
 
   var maxJobs = 100 // How many jobs can we have running simultaneously?
 
@@ -111,6 +107,8 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   var idleTimeoutInSec = 300
   var reuseConnections = true
   var thriftClientId = ""
+  var thriftProtocolFactory: Option[TProtocolFactory] = None
+  var includeParrotHeader = true
 
   var thinkTime = 0L
   var replayTimeCheck = false
@@ -124,7 +122,9 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
 
   def recordProcessor: RecordProcessor = loadTestInstance.get
 
-  lazy val service = transport.map { _.createService(this) }
+  lazy val queue =
+    transport map { t => new RequestQueue(new RequestConsumer(createDistribution, t), t) }
+  lazy val service = transport.map { t => t.createService(queue.get) }
 
   // Customizable Request Distribution
   var createDistribution: Int => RequestDistribution = { rate =>

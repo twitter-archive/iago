@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.parrot.server
 
 import com.twitter.finagle.kestrel.protocol._
+import com.twitter.finagle.Service
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util.{Duration, Time}
 import java.util.concurrent.TimeUnit
@@ -85,8 +86,10 @@ object KestrelCommandExtractor extends MemcacheLikeCommandExtractor[Command] {
 }
 
 
-class KestrelTransport(config: ParrotServerConfig[ParrotRequest, Response])
-extends MemcacheLikeTransport[Command, ParrotRequest, Response](KestrelCommandExtractor, config)
-{
+object KestrelTransportFactory extends MemcacheLikeTransportFactory[Command, Response] {
   override def codec() = Kestrel()
+  override def fromService(service: Service[Command, Response]) = new KestrelTransport(service)
 }
+
+class KestrelTransport(service: Service[Command, Response])
+  extends MemcacheLikeTransport[Command, Response](KestrelCommandExtractor, service)

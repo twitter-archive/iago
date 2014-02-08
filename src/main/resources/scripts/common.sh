@@ -1,6 +1,6 @@
 # common.sh
 
-if [ -z "$JAVA_HOME" ]; then
+if [[ -z $JAVA_HOME ]]; then
   potential=$(ls -r1d /usr/lib/jvm/java-1.7.0-openjdk7 /opt/jdk /System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Home /usr/java/default /usr/java/j* 2>/dev/null)
   for p in $potential; do
     if [ -x $p/bin/java ]; then

@@ -13,16 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package com.twitter.parrot.server
+package com.twitter.parrot.integration
 
-import com.twitter.finagle.Service
-import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.util.Future
+import com.twitter.io.TempFile
+import com.twitter.parrot.config.ParrotFeederConfig
+import com.twitter.parrot.feeder.InMemoryLog
+import com.twitter.util.Eval
 
-class ParrotService[Req <: ParrotRequest, Rep](val queue: RequestQueue[Req, Rep]) extends Service[Req, Rep] {
-
-  def apply(req: Req): Future[Rep] = {
-    queue.addRequest(req)
+trait FeederFixture {
+  protected def makeFeederConfig(parrotPort: Int, list: List[String]): ParrotFeederConfig = {
+    val result = new Eval().apply[ParrotFeederConfig](TempFile.fromResourcePath(
+      "/test-feeder.scala"))
+    result.parrotPort = parrotPort
+    result.logSource = Some(new InMemoryLog(list))
+    result
   }
-
 }

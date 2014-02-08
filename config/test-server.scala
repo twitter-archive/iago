@@ -21,7 +21,6 @@ new ParrotServerConfig[ParrotRequest, HttpResponse] {
 
   clusterService = Some(new LocalCluster)
   transport = Some(new DumbTransport)
-  queue = new RequestQueue(this)
 
   thinkTime = 0
   replayTimeCheck = false

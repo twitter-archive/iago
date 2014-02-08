@@ -17,11 +17,10 @@ package com.twitter.parrot.server
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.thrift.ThriftClientRequest
-import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util.{Future, Promise, Time}
 
-class ParrotThriftService(config: ParrotServerConfig[ParrotRequest, Array[Byte]])
-  extends ParrotService[ParrotRequest, Array[Byte]](config)
+class ParrotThriftService(queue: RequestQueue[ParrotRequest, Array[Byte]])
+  extends ParrotService[ParrotRequest, Array[Byte]](queue)
 
 class ParrotThriftServiceWrapper(val service: ParrotService[ParrotRequest, Array[Byte]])
   extends Service[ThriftClientRequest, Array[Byte]]
@@ -29,7 +28,6 @@ class ParrotThriftServiceWrapper(val service: ParrotService[ParrotRequest, Array
   def apply(req: ThriftClientRequest): Future[Array[Byte]] = {
     val request = new ParrotRequest(message = req)
     service.queue.addRequest(request)
-    new Promise[Array[Byte]]()
   }
 
   override def close(deadline: Time) = service.close(deadline)

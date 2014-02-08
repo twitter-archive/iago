@@ -85,64 +85,68 @@ class ParrotUdpTransportSpec extends WordSpec with MustMatchers with OneInstance
       victim.stop()
     }
 
-    "timeout if the service does not respond quickly enough" in {
-      val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
-      transport.asInstanceOf[ParrotUdpTransport[String]].requestTimeout = Some(100.milliseconds)
+    if (!sys.props.contains("SKIP_FLAKY")) {
+      "timeout if the service does not respond quickly enough" in {
+        val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
+        transport.asInstanceOf[ParrotUdpTransport[String]].requestTimeout = Some(100.milliseconds)
 
-      val victim = new UdpEchoServer(victimPort, true)
-      victim.start()
+        val victim = new UdpEchoServer(victimPort, true)
+        victim.start()
 
-      val parrotRequest = new ParrotRequest(rawLine = "data")
+        val parrotRequest = new ParrotRequest(rawLine = "data")
 
-      Stats.getCounter("udp_request_timeout").reset()
+        Stats.getCounter("udp_request_timeout").reset()
 
-      val result: Try[String] = transport.sendRequest(parrotRequest).get(1.minute)
-      evaluating { result() } must produce[RequestTimeoutException]
-      eventually {
-        Stats.getCounter("udp_request_timeout")() must be(1L)
+        val result: Try[String] = transport.sendRequest(parrotRequest).get(1.minute)
+        evaluating { result() } must produce[RequestTimeoutException]
+        eventually {
+          Stats.getCounter("udp_request_timeout")() must be(1L)
+        }
+
+        transport.shutdown()
+        victim.stop()
       }
-
-      transport.shutdown()
-      victim.stop()
     }
 
-    "work in the context of feeder and server" in {
+    if (!sys.props.contains("SKIP_FLAKY")) {
+      "work in the context of feeder and server" in {
 
-      serverConfig.loadTestInstance = Some(new RecordProcessor {
-        val service = serverConfig.service.get
-        def processLines(lines: Seq[String]) {
-          lines flatMap { line =>
-            Some(service(new ParrotRequest(None, Nil, null, line)))
+        serverConfig.loadTestInstance = Some(new RecordProcessor {
+          val service = serverConfig.service.get
+          def processLines(lines: Seq[String]) {
+            lines flatMap { line =>
+              Some(service(new ParrotRequest(None, Nil, null, line)))
+            }
           }
-        }
-      })
+        })
 
-      val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
+        val transport = serverConfig.transport.getOrElse(fail("no transport configured"))
 
-      val victim = new UdpEchoServer(victimPort)
-      victim.start()
+        val victim = new UdpEchoServer(victimPort)
+        victim.start()
 
-      val requestStrings = List("a", "square peg", "cannot fit into a round hole")
+        val requestStrings = List("a", "square peg", "cannot fit into a round hole")
 
-      val server: ParrotServer[ParrotRequest, String] = new ParrotServerImpl(serverConfig)
-      server.start()
+        val server: ParrotServer[ParrotRequest, String] = new ParrotServerImpl(serverConfig)
+        server.start()
 
-      val feederConfig = makeFeederConfig(serverConfig)
-      feederConfig.logSource = Some(new InMemoryLog(requestStrings))
+        val feederConfig = makeFeederConfig(serverConfig)
+        feederConfig.logSource = Some(new InMemoryLog(requestStrings))
 
-      val feeder = new ParrotFeeder(feederConfig)
-      feeder.start()
+        val feeder = new ParrotFeeder(feederConfig)
+        feeder.start()
 
-      try {
-        {
-          eventually(timeout(Span(5, Seconds)), interval(Span(500, Millis))) {
-            transport.asInstanceOf[ParrotUdpTransport[String]].allRequests.get must
-              be(requestStrings.size)
+        try {
+          {
+            eventually(timeout(Span(5, Seconds)), interval(Span(500, Millis))) {
+              transport.asInstanceOf[ParrotUdpTransport[String]].allRequests.get must
+                be(requestStrings.size)
+            }
           }
+        } finally {
+          // The Feeder will shut down the Server for us
+          feeder.shutdown()
         }
-      } finally {
-        // The Feeder will shut down the Server for us
-        feeder.shutdown()
       }
     }
   }
@@ -153,11 +157,11 @@ class ParrotUdpTransportSpec extends WordSpec with MustMatchers with OneInstance
     result.victim = result.HostPortListVictim("localhost:" + victimPort)
     result.parrotPort = RandomSocket().getPort
     result.thriftServer = Some(new ThriftServerImpl) // ParrotServer throws otherwise
-    result.transport = Some(new ParrotUdpTransport[String](result) {
-      val requestEncoder = Some(new StringEncoder(CharsetUtil.UTF_8))
-      val responseDecoder = Some(new StringDecoder(CharsetUtil.UTF_8))
-    })
-    result.queue = Some(new RequestQueue(result))
+    result.transport =
+      Some(new ParrotUdpTransport[String](new InetSocketAddress("localhost", victimPort)) {
+        val requestEncoder = Some(new StringEncoder(CharsetUtil.UTF_8))
+        val responseDecoder = Some(new StringDecoder(CharsetUtil.UTF_8))
+      })
     result
   }
 

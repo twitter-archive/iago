@@ -33,7 +33,7 @@ import java.net.URLClassLoader
 
 class ParrotLauncher(config: ParrotLauncherConfig) {
   private[this] val log = Logger.get(getClass)
-  private[this] val pmode =
+  lazy protected[this] val pmode =
     if (config.localMode)
       new ParrotModeLocal(config)
     else
@@ -63,13 +63,21 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     }
   }
 
+  val old_transport_strings =
+    Set("FinagleTransport", "ThriftTransport", "KestrelTransport", "MemcacheTransport")
+
+  val transport =
+    config.transport + (if(old_transport_strings.contains(config.transport)) "Factory(this)" else "")
+
   private[this] val symbols = mutable.Map[String, String](
     ("batchSize" -> config.batchSize.toString),
     ("classPath" -> config.classPath),
     ("configType" -> config.configType),
     ("createDistribution" -> config.createDistribution),
+    ("cronSchedule" -> getCronSchedule(config.cronSchedule)),
     ("customLogSource" -> config.customLogSource),
     ("duration" -> config.duration.toString),
+    ("feederXmx" -> config.feederXmx.toString),
     ("header" -> config.header),
     ("hostConnectionCoresize" -> config.hostConnectionCoresize.toString),
     ("hostConnectionIdleTimeInMs" -> config.hostConnectionIdleTimeInMs.toString),
@@ -82,6 +90,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("loadTest" -> config.loadTest),
     ("logFile" -> pmode.logPath),
     ("maxRequests" -> config.maxRequests.toString),
+    ("mesosEnv" -> config.mesosEnv),
     ("numFeederInstances" -> config.numFeederInstances.toString),
     ("numInstances" -> config.numInstances.toString),
     ("port" -> config.port.toString),
@@ -95,17 +104,30 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("serverXmx" -> config.serverXmx.toString),
     ("tcpConnectTimeoutInMs" -> config.tcpConnectTimeoutInMs.toString),
     ("thriftClientId" -> config.thriftClientId),
+    ("thriftProtocolFactory" -> config.thriftProtocolFactory),
     ("timeUnit" -> config.timeUnit),
     ("traceLevel" -> config.traceLevel.toString),
-    ("extraLoggers" -> config.extraLoggers),
-    ("transport" -> config.transport),
-    ("victim" -> victim))
+    ("transport" -> transport),
+    ("victim" -> victim),
+    ("includeParrotHeader" -> config.includeParrotHeader.toString))
+
+  // a read only view of the symbols table for testing
+  def readSymbols: Map[String, String] = symbols.toMap
 
   private[this] lazy val regex = ("#\\{(" + symbols.keys.mkString("|") + ")\\}").r
 
   def adjust(change: String) = pmode.adjust(change)
 
   def kill = pmode.kill
+
+  private[this] def getCronSchedule(sched: Option[String]): String = {
+    sched match {
+      case None => ""
+      case Some(cronString) =>
+        val auroraCronFormat= "(cron_schedule = '%s')"
+        auroraCronFormat.format(cronString)
+    }
+  }
 
   def start() {
     ConsoleHandler.start(config.traceLevel)
@@ -163,9 +185,9 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     log.debug("Creating configs.")
     val eval = new Eval()
     config.parrotTasks.foreach { root =>
-      val name = root + ".scala"
-      val path = pmode.targetDstFolder + "/parrot-" + name
-      val file = templatize("/templates/template-" + name, path)
+      val srcPath = "/templates/template-" + root + ".scala.in"
+      val dstPath = pmode.targetDstFolder + "/parrot-" + root + ".scala"
+      val file = templatize(srcPath, dstPath)
       eval.compile("class Test {" + eval.toSource(file) + "}")
     }
   }

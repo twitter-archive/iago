@@ -15,7 +15,7 @@ new #{configType}[#{requestType}, #{responseType}] {
       rollPolicy = Policy.MaxSize(100.megabytes),
       rotateCount = 6
     )
-  ) #{statlogger} #{extraLoggers} :: loggers
+  ) #{statlogger} :: loggers
 
   zkHostName = #{zkHostName}
   zkNode = "#{zkNode}"
@@ -40,6 +40,7 @@ new #{configType}[#{requestType}, #{responseType}] {
   hostConnectionMaxLifeTimeInMs = #{hostConnectionMaxLifeTimeInMs}
   requestTimeoutInMs = #{requestTimeoutInMs}
   tcpConnectTimeoutInMs = #{tcpConnectTimeoutInMs}
+  includeParrotHeader = #{includeParrotHeader}
 
   // for thrift
   parrotPort = 9999
@@ -51,8 +52,8 @@ new #{configType}[#{requestType}, #{responseType}] {
   // request distribution -- default will be to do nada
   #{createDistribution}
 
-  transport = Some(new #{transport}(this))
-  queue = Some(new RequestQueue(this))
+  thriftProtocolFactory = Some(#{thriftProtocolFactory})
+  transport = Some(#{transport})
   thriftServer = Some(new ThriftServerImpl)
   clusterService = Some(new ParrotClusterImpl(this))
 

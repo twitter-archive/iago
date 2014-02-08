@@ -19,7 +19,6 @@ import scala.collection.mutable
 import scala.util.Random
 import com.twitter.finagle.Service
 import com.twitter.logging.Logger
-import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.parrot.util.IgnorantHostnameVerifier
 import com.twitter.parrot.util.IgnorantTrustManager
 import com.twitter.util.Future
@@ -41,7 +40,7 @@ trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
 
   protected[server] def sendRequest(request: Req): Future[Rep]
 
-  def createService(config: ParrotServerConfig[Req, Rep]) = new ParrotService[Req, Rep](config)
+  def createService(queue: RequestQueue[Req, Rep]) = new ParrotService[Req, Rep](queue)
 
   def shutdown(): Unit = Await.ready(close())
 
@@ -51,7 +50,7 @@ trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
     handlers += f
   }
 
-  def start(config: ParrotServerConfig[Req, Rep]) {
+  def start() {
     // Works around change in Java 6u22 that would otherwise prevent setting some http headers
     System.setProperty("sun.net.http.allowRestrictedHeaders", "true")
 

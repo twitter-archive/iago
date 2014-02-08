@@ -11,7 +11,7 @@ parrot_server_process = Process(
     )
 
 parrot_server_task = SequentialTask(
-    resources = Resources(cpu = #{numCpus}, ram = #{mesosRamInMb} * MB, disk = #{serverDiskInMb} * MB),
+    resources = Resources(cpu = #{mesosServerNumCpus}, ram = #{mesosServerRamInMb} * MB, disk = #{serverDiskInMb} * MB),
     processes = [parrot_server_create, parrot_server_process]
     )
 
@@ -20,6 +20,7 @@ parrot_server_job = Job(
     cluster = '#{mesosCluster}',
     role = '#{user}',
     task = parrot_server_task,
+    environment = '#{mesosEnv}',
     instances = #{numInstances},
     service = False,
     constraints = {'host':'limit:#{maxPerHost}'}
@@ -37,7 +38,7 @@ parrot_feeder_process = Process(
     )
 
 parrot_feeder_task = SequentialTask(
-    resources = Resources(cpu = 1.0, ram = 2048 * MB, disk = #{feederDiskInMb} * MB),
+    resources = Resources(cpu = #{mesosFeederNumCpus}, ram = #{mesosFeederRamInMb} * MB, disk = #{feederDiskInMb} * MB),
     processes = [parrot_feeder_create, parrot_feeder_process]
     )
 
@@ -46,10 +47,11 @@ parrot_feeder_job = Job(
     cluster = '#{mesosCluster}',
     role = '#{user}',
     task = parrot_feeder_task,
+    environment = '#{mesosEnv}',
     instances = #{numFeederInstances},
     service = False,
     max_task_failures = 3,
     constraints = {'host': 'limit:#{maxPerHost}'}
     )
 
-jobs = [parrot_server_job, parrot_feeder_job]
+jobs = [parrot_server_job#{cronSchedule}, parrot_feeder_job#{cronSchedule}]

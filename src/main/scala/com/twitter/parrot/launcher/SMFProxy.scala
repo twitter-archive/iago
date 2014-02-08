@@ -89,9 +89,10 @@ class SMFProxy(config: ParrotLauncherConfig) {
   }
 
   def uploadMesosPackage(task: String, job: String, role: String) {
+    // create&kill use cluster/role/env/name, but package_add_version still uses the old format
     val jobName = "parrot_%s_%s".format(task, job)
     val zip = task + ".zip"
-    val upload = "mesos package_add_version --cluster=%s %s %s %s".format(cluster, role, jobName, targetDir + zip)
+    val upload = "aurora package_add_version --cluster=%s %s %s %s".format(cluster, role, jobName, targetDir + zip)
 
     if (useProxy)
       noisyTime("rsync %s %s:%s".format(zip, proxy, targetDir))
@@ -109,10 +110,9 @@ class SMFProxy(config: ParrotLauncherConfig) {
       throw new RuntimeException("failed: " + command)
   }
 
-  def createMesosJob(task: String, job: String, distDir: String) {
-    val jobName = "parrot_%s_%s".format(task, job)
+  def createMesosJob(jobName: String, job: String, distDir: String) {
     val config = if (useProxy) targetDir + job + "-config.mesos" else "config/target/config.mesos"
-    val create = "mesos create %s %s --log_to_stderr=INFO".format(jobName, config)
+    val create = "aurora create %s %s --log_to_stderr=INFO".format(jobName, config)
 
     if (useProxy)
       noisy("rsync %s/config/target/config.mesos %s:%s".format(distDir, proxy, config))
@@ -120,9 +120,9 @@ class SMFProxy(config: ParrotLauncherConfig) {
     noisyTime(proxyCmd(create))
   }
 
-  def killMesosJob(user: String, job: String, task: String) {
-    val killCmd = "mesos kill %s/%s/%s/parrot_%s_%s"
-    val command = proxyCmd(killCmd.format(cluster, user, env, task, job))
+  def killMesosJob(jobName: String) {
+    val killCmd = "aurora kill %s"
+    val command = proxyCmd(killCmd.format(jobName))
     val runner = new CommandRunner(command, true)
     val status = runner.run()
     if (!(0 until 2 contains status)) {

@@ -18,6 +18,7 @@ package com.twitter.parrot.server
 import collection.mutable
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.stats.OstrichStatsReceiver
+import com.twitter.finagle.zipkin.thrift.ZipkinTracer
 import com.twitter.finagle.{ CodecFactory, Service }
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.util.{ Duration, Promise, Future }
@@ -29,35 +30,47 @@ trait MemcacheLikeCommandExtractor[T] {
   def unapply(rawCommand: String): Option[T]
 }
 
-abstract class MemcacheLikeTransport[Codec, Req, Rep](
-  commandExtractor: MemcacheLikeCommandExtractor[Codec],
-  config: ParrotServerConfig[ParrotRequest, Rep])
-  extends ParrotTransport[ParrotRequest, Rep] {
+abstract class MemcacheLikeTransportFactory[Req, Rep] extends ParrotTransportFactory[ParrotRequest, Rep]
+{
 
-  def codec(): CodecFactory[Codec, Rep]
+  protected def codec(): CodecFactory[Req, Rep]
 
-  val builder = ClientBuilder()
-    .codec(codec)
-    .hostConnectionCoresize(config.hostConnectionCoresize)
-    .hostConnectionIdleTime(Duration(config.hostConnectionIdleTimeInMs, TimeUnit.MILLISECONDS))
-    .hostConnectionLimit(config.hostConnectionLimit)
-    .hostConnectionMaxIdleTime(Duration(config.hostConnectionMaxIdleTimeInMs,
-      TimeUnit.MILLISECONDS))
-    .hostConnectionMaxLifeTime(Duration(config.hostConnectionMaxLifeTimeInMs,
-      TimeUnit.MILLISECONDS))
-    .requestTimeout(Duration(config.requestTimeoutInMs, TimeUnit.MILLISECONDS))
-    .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
-    .keepAlive(true)
-    .reportTo(new OstrichStatsReceiver)
+  protected def fromService(service: Service[Req, Rep]): MemcacheLikeTransport[Req, Rep]
 
-  val builder2 = {
-    config.victim.value match {
-      case config.HostPortListVictim(victims) => builder.hosts(victims)
-      case config.ServerSetVictim(cluster)    => builder.cluster(cluster)
+  def apply(config: ParrotServerConfig[ParrotRequest, Rep]) = {
+    val statsReceiver = new OstrichStatsReceiver
+
+    val builder = ClientBuilder()
+      .codec(codec)
+      .daemon(true)
+      .hostConnectionCoresize(config.hostConnectionCoresize)
+      .hostConnectionIdleTime(Duration(config.hostConnectionIdleTimeInMs, TimeUnit.MILLISECONDS))
+      .hostConnectionLimit(config.hostConnectionLimit)
+      .hostConnectionMaxIdleTime(Duration(config.hostConnectionMaxIdleTimeInMs,
+        TimeUnit.MILLISECONDS))
+      .hostConnectionMaxLifeTime(Duration(config.hostConnectionMaxLifeTimeInMs,
+        TimeUnit.MILLISECONDS))
+      .requestTimeout(Duration(config.requestTimeoutInMs, TimeUnit.MILLISECONDS))
+      .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
+      .keepAlive(true)
+      .reportTo(statsReceiver)
+      .tracer(ZipkinTracer.mk(statsReceiver = statsReceiver))
+
+    val builder2 = {
+      config.victim.value match {
+        case config.HostPortListVictim(victims) => builder.hosts(victims)
+        case config.ServerSetVictim(cluster)    => builder.cluster(cluster)
+      }
     }
-  }
 
-  val service = new RefcountedService(builder2.build)
+    fromService(new RefcountedService(builder2.build))
+  }
+}
+
+class MemcacheLikeTransport[Req, Rep](
+  commandExtractor: MemcacheLikeCommandExtractor[Req],
+  service: Service[Req, Rep])
+  extends ParrotTransport[ParrotRequest, Rep] {
 
   override protected[server] def sendRequest(request: ParrotRequest): Future[Rep] = {
 

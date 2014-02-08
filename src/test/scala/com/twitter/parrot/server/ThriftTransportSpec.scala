@@ -15,25 +15,25 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
+import org.junit.runner.RunWith
+import org.scalatest.OneInstancePerTest
+import org.scalatest.WordSpec
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.matchers.MustMatchers
+
 import com.twitter.finagle.thrift.ThriftClientRequest
 import com.twitter.io.TempFile
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotServerConfig
 import com.twitter.parrot.integration.EchoServer
-import com.twitter.parrot.util.OutputBuffer
-import com.twitter.util.{ RandomSocket, Eval }
-import java.util.concurrent.atomic.AtomicInteger
-import org.apache.thrift.protocol._
-import org.junit.runner.RunWith
-import org.scalatest.WordSpec
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.matchers.MustMatchers
-import org.scalatest.OneInstancePerTest
+import com.twitter.parrot.util.ThriftFixture
+import com.twitter.util.Config.toSpecified
+import com.twitter.util.Eval
+import com.twitter.util.RandomSocket
 
 @RunWith(classOf[JUnitRunner])
-class ThriftTransportSpec extends WordSpec with MustMatchers with OneInstancePerTest {
+class ThriftTransportSpec extends WordSpec with ThriftFixture with MustMatchers with OneInstancePerTest {
   val log = Logger.get(getClass)
-  var seqId = new AtomicInteger(0)
 
   "Thrift Transport" should {
     "work inside a server config" in {
@@ -57,6 +57,7 @@ class ThriftTransportSpec extends WordSpec with MustMatchers with OneInstancePer
 
       EchoServer.getRequestCount must not be 0
       rep.containsSlice("hello".getBytes) must be(true)
+      EchoServer.close
     }
   }
 
@@ -66,21 +67,7 @@ class ThriftTransportSpec extends WordSpec with MustMatchers with OneInstancePer
     result.parrotPort = RandomSocket().getPort
     result.thriftServer = Some(new ThriftServerImpl)
     result.victim = result.HostPortListVictim("localhost:" + victimPort)
-    result.transport = Some(new ThriftTransport(result))
-    result.queue = Some(new RequestQueue(result))
+    result.transport = Some(ThriftTransportFactory(result))
     result
-  }
-
-  def serialize(method: String, field: String, msg: String) = {
-    val oBuffer = new OutputBuffer
-    oBuffer().writeMessageBegin(new TMessage(method, TMessageType.CALL, seqId.incrementAndGet()))
-    oBuffer().writeStructBegin(new TStruct(method + "_args"))
-    oBuffer().writeFieldBegin(new TField(field, TType.STRING, 1))
-    oBuffer().writeString(msg)
-    oBuffer().writeFieldEnd()
-    oBuffer().writeFieldStop()
-    oBuffer().writeStructEnd()
-    oBuffer().writeMessageEnd()
-    oBuffer.toArray
   }
 }

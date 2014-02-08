@@ -28,7 +28,8 @@ import com.twitter.util.RandomSocket
 
 @RunWith(classOf[JUnitRunner])
 class FinagleTransportSpec extends WordSpec with MustMatchers with OneInstancePerTest {
-  "FinagleTransport" should {
+
+  if (!sys.props.contains("SKIP_FLAKY")) "FinagleTransport" should {
 
     // local http server
     val victimPort = RandomSocket.nextPort()
@@ -39,7 +40,7 @@ class FinagleTransportSpec extends WordSpec with MustMatchers with OneInstancePe
     }
 
     "allow us to send http requests to web servers" in {
-      val transport = new FinagleTransport(config)
+      val transport = FinagleTransportFactory(config)
       val request = new ParrotRequest
       val future = transport.sendRequest(request)
       future.get() must not be null
@@ -47,16 +48,15 @@ class FinagleTransportSpec extends WordSpec with MustMatchers with OneInstancePe
     }
 
     // TODO: Add an SSL HTTP server so we can catch problems there
-/*
+
     "cache factories" in {
       // factories are only cached if needed
       config.reuseConnections = false
-      val transport = new FinagleTransport(config)
+      val transport = FinagleTransportFactory(config)
       val request = new ParrotRequest
       transport.sendRequest(request).get()
       transport.sendRequest(request).get()
       HttpServer.getAndResetRequests() must be(2)
     }
-*/
   }
 }

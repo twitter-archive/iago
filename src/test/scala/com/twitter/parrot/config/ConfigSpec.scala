@@ -30,23 +30,23 @@ class ConfigSpec extends WordSpec with MustMatchers {
     val configFiles = Seq(
       "/dev-feeder.scala",
       "/test-server.scala",
-      "/test-server.scala",
       "/test-slow.scala",
       "/test-ssl.scala",
       "/test-timeout.scala",
       "/test-memcache.scala",
       "/test-udp.scala",
       "/test-kestrel.scala",
-      "/test-thrift.scala").map { TempFile.fromResourcePath(_) }
+      "/test-thrift.scala")
 
     for (file <- configFiles) {
-      file.getName() in {
+      file in {
+        val tempFile = TempFile.fromResourcePath(file)
         try {
-          val config = eval[ParrotCommonConfig](file)
+          val config = eval[ParrotCommonConfig](tempFile)
           config must not be null
         } catch {
           case t: Throwable => {
-            Console.err.println("Error while loading %s".format(file.getName()))
+            Console.err.println("Error while loading %s".format(tempFile.getName()))
             t.printStackTrace()
           }
         }

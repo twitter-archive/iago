@@ -18,8 +18,6 @@ package com.twitter.parrot.server
 import java.io.File
 import java.io.FileReader
 import java.io.IOException
-import java.util.{ List => JList }
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 import scala.xml.Elem
 import scala.xml.Node
@@ -37,15 +35,15 @@ import com.twitter.util.Promise
 import com.twitter.util.Stopwatch
 import java.util.concurrent.atomic.AtomicBoolean
 
-trait ParrotServer[Req <: ParrotRequest, Rep] extends ParrotServerService.ServiceIface {
+trait ParrotServer[Req <: ParrotRequest, Rep] extends ParrotServerService.FutureIface {
   val config: ParrotServerConfig[Req, Rep]
 }
 
 class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig[Req, Rep])
   extends ParrotServer[Req, Rep] {
   private[this] val log = Logger.get(getClass)
-  private[this] val status = new ParrotStatus().setStatus(ParrotState.UNKNOWN)
-  val done = Promise[Void]
+  private[this] var status: ParrotStatus = ParrotStatus(status = Some(ParrotState.Unknown))
+  val done = Promise[Unit]
 
   private[this] val isShutdown = new AtomicBoolean(false)
 
@@ -54,22 +52,22 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
   private[this] lazy val transport = config.transport.getOrElse(throw new Exception("Unconfigured transport"))
   private[this] lazy val queue = config.queue.getOrElse(throw new Exception("Unconfigured request queue"))
 
-  def start(): Future[Void] = {
-    status.setStatus(ParrotState.STARTING)
-    transport.start(config)
+  def start(): Future[Unit] = {
+    status = status.copy(status = Some(ParrotState.Starting))
+    transport.start()
     queue.start()
     thriftServer.start(this, config.parrotPort)
     clusterService.start(config.parrotPort)
-    status.setStatus(ParrotState.RUNNING)
+    status = status.copy(status = Some(ParrotState.Running))
     log.info("using record processor %s", config.recordProcessor.getClass().getName())
     config.recordProcessor.start()
-    Future.Void
+    Future.Unit
   }
 
   /** indicate when the first record has been received */
   def firstRecordReceivedFromFeeder: Future[Unit] = queue.firstRecordReceivedFromFeeder
 
-  def shutdown(): Future[Void] = {
+  def shutdown(): Future[Unit] = {
 
     /* Calling ServiceTracker.shutdown() causes all the Ostrich threads to go away. It also results
      * in all its managed services to be shutdown. That includes this service. We put a guard
@@ -78,16 +76,16 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
 
     if (isShutdown.compareAndSet(false, true)) {
       Future {
-        status.setStatus(ParrotState.STOPPING)
-        log.trace("server: shutting down")
+        status = status.copy(status = Some(ParrotState.Stopping))
+        log.trace("shutting down")
         clusterService.shutdown()
         queue.shutdown()
         shutdownTransport
-        status.setStatus(ParrotState.SHUTDOWN)
+        status = status.copy(status = Some(ParrotState.Shutdown))
         config.recordProcessor.shutdown()
         ServiceTracker.shutdown()
         thriftServer.shutdown()
-        log.trace("server: shut down")
+        log.trace("shut down")
         done.setValue(null)
       }
     }
@@ -100,25 +98,24 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     log.trace("transport shut down in %s", PrettyDuration(elapsed()))
   }
 
-  def setRate(newRate: Int): Future[Void] = {
+  def setRate(newRate: Int): Future[Unit] = {
     log.info("setting rate %d RPS", newRate)
     queue.setRate(newRate)
-    Future.Void
+    Future.Unit
   }
 
-  def sendRequest(lines: JList[String]): Future[ParrotStatus] = {
+  def sendRequest(lines: Seq[String]): Future[ParrotStatus] = {
     log.trace("sendRequest: calling process lines with %d lines", lines.size)
-    config.recordProcessor.processLines(lines.asScala)
+    config.recordProcessor.processLines(lines)
     log.trace("sendRequest: done calling process lines with %d lines", lines.size)
 
     Stats.incr("records-read", lines.size)
-    val result = getStatus.map(status => status.setLinesProcessed(lines.size))
+    val result = getStatus.map(_.copy(linesProcessed = Some(lines.size)))
     log.trace("exiting sendRequest")
     result
   }
 
   def getStatus: Future[ParrotStatus] = Future {
-    val result = new ParrotStatus
     val collection = Stats.get("global")
 
     val rps = collection.getGauge("qps") match {
@@ -133,24 +130,26 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
 
     val processed = queue.totalProcessed
 
-    result.setQueueDepth(depth)
-    result.setRequestsPerSecond(rps)
-    result.setStatus(status.getStatus)
-    result.setTotalProcessed(processed)
+    ParrotStatus(
+      queueDepth = Some(depth),
+      requestsPerSecond = Some(rps),
+      status = status.status,
+      totalProcessed = Some(processed)
+    )
   }
 
-  def pause(): Future[Void] = {
+  def pause(): Future[Unit] = {
     log.debug("pausing server")
     queue.pause()
-    status.setStatus(ParrotState.PAUSED)
-    Future.Void
+    status = status.copy(status = Some(ParrotState.Paused))
+    Future.Unit
   }
 
-  def resume(): Future[Void] = {
+  def resume(): Future[Unit] = {
     log.debug("resuming server")
     queue.resume()
-    status.setStatus(ParrotState.RUNNING)
-    Future.Void
+    status = status.copy(status = Some(ParrotState.Running))
+    Future.Unit
   }
 
   def getRootThreadGroup = {
@@ -224,6 +223,6 @@ class ParrotServerImpl[Req <: ParrotRequest, Rep](val config: ParrotServerConfig
     var buf = new Array[Char](len)
     fr.read(buf)
     fr.close
-    new ParrotLog(off, len, new String(buf))
+    ParrotLog(off, len, new String(buf))
   }
 }

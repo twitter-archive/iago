@@ -46,7 +46,7 @@ import com.twitter.util.Time
 class KestrelTransportSpec extends WordSpec with MustMatchers {
   implicit def stringToChannelBuffer(s: String) = ChannelBuffers.wrappedBuffer(s.getBytes)
 
-  "Kestrel Transport" should {
+  if (System.getenv.get("SBT_CI") == null && System.getProperty("SBT_CI") == null) "Kestrel Transport" should {
     "work inside a server config" in {
       val victimPort = RandomSocket.nextPort()
       val serverConfig = makeServerConfig(victimPort)
@@ -131,8 +131,7 @@ class KestrelTransportSpec extends WordSpec with MustMatchers {
       TempFile.fromResourcePath("/test-kestrel.scala"))
     result.parrotPort = RandomSocket().getPort
     result.victim = result.HostPortListVictim("localhost:" + victimPort)
-    result.transport = Some(new KestrelTransport(result))
-    result.queue = Some(new RequestQueue(result))
+    result.transport = Some(KestrelTransportFactory(result))
     result
   }
 }

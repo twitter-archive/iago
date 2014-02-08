@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.parrot.server
 
+import com.twitter.finagle.Service
 import com.twitter.finagle.memcached.protocol.text.Memcached
 import com.twitter.finagle.memcached.protocol.{Command, Get, Gets, Response, Set}
 import com.twitter.parrot.config.ParrotServerConfig
@@ -75,9 +76,10 @@ object MemcacheCommandExtractor extends MemcacheLikeCommandExtractor[Command] {
     }
 }
 
-
-class MemcacheTransport(config: ParrotServerConfig[ParrotRequest, Response])
-extends MemcacheLikeTransport[Command, ParrotRequest, Response](MemcacheCommandExtractor, config)
-{
+object MemcacheTransportFactory extends MemcacheLikeTransportFactory[Command, Response] {
   override def codec() = Memcached()
+  override def fromService(service: Service[Command, Response]) = new MemcacheTransport(service)
 }
+
+class MemcacheTransport(service: Service[Command, Response])
+  extends MemcacheLikeTransport[Command, Response](MemcacheCommandExtractor, service)

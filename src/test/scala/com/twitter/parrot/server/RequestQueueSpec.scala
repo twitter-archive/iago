@@ -34,7 +34,7 @@ class RequestQueueSpec
     if (System.getenv("SBT_CI") == null) {
 
       "achieve the specified requestRate when it's in excess of 500rps" in {
-        val queue = new RequestQueue(config)
+        val queue = config.queue.get
         queue.start()
 
         val seconds = 30
@@ -53,7 +53,7 @@ class RequestQueueSpec
       }
 
       "accurately report queue_depth" in {
-        val queue = new RequestQueue(config)
+        val queue = config.queue.get
 
         val seconds = 10
         val rate = 100

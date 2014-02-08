@@ -17,8 +17,6 @@ package com.twitter.parrot.feeder
 
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConverters.seqAsJavaListConverter
-
 import com.twitter.logging.Logger
 import com.twitter.parrot.util.InternalCounter
 import com.twitter.parrot.util.RemoteParrot
@@ -81,18 +79,18 @@ class FeedConsumer(parrot: RemoteParrot, state: => FeederState.Value) extends Th
   }
 
   private[this] def sendRequest(parrot: RemoteParrot, request: List[String]) {
-    val success = parrot.sendRequest(request.asJava)
+    val success = parrot.sendRequest(request)
     log.info("FeedConsumer.sendRequest: wrote batch of size %d to %s:%d rps=%g depth=%g status=%s lines=%d",
       request.size,
       parrot.host,
       parrot.port,
-      success.requestsPerSecond,
-      success.queueDepth,
+      success.requestsPerSecond getOrElse 0d,
+      success.queueDepth getOrElse 0d,
       success.status,
-      success.linesProcessed)
+      success.linesProcessed getOrElse 0)
 
-    val linesProcessed = success.getLinesProcessed
+    val linesProcessed = success.linesProcessed getOrElse 0
     parrot.results.add(new InternalCounter(linesProcessed, request.length - linesProcessed))
-    parrot.queueDepth = success.queueDepth
+    parrot.queueDepth = success.queueDepth getOrElse 0d
   }
 }
