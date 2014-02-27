@@ -109,6 +109,7 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
   var thriftClientId = ""
   var thriftProtocolFactory: Option[TProtocolFactory] = None
   var includeParrotHeader = true
+  var includeRandomXForwardedForHeader = true
 
   var thinkTime = 0L
   var replayTimeCheck = false

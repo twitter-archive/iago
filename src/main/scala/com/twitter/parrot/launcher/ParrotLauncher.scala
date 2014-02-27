@@ -86,6 +86,8 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("hostConnectionMaxLifeTimeInMs" -> config.hostConnectionMaxLifeTimeInMs.toString),
     ("httpHostHeaderPort" -> config.port.toString),
     ("imports" -> config.imports),
+    ("includeParrotHeader" -> config.includeParrotHeader.toString),
+    ("includeRandomXForwardedForHeader" -> config.includeRandomXForwardedForHeader.toString),
     ("jobName" -> pmode.jobName),
     ("loadTest" -> config.loadTest),
     ("logFile" -> pmode.logPath),
@@ -108,8 +110,7 @@ class ParrotLauncher(config: ParrotLauncherConfig) {
     ("timeUnit" -> config.timeUnit),
     ("traceLevel" -> config.traceLevel.toString),
     ("transport" -> transport),
-    ("victim" -> victim),
-    ("includeParrotHeader" -> config.includeParrotHeader.toString))
+    ("victim" -> victim))
 
   // a read only view of the symbols table for testing
   def readSymbols: Map[String, String] = symbols.toMap

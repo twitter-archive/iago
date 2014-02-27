@@ -67,12 +67,12 @@ object FinagleTransportFactory extends ParrotTransportFactory[ParrotRequest, Htt
       else
         FinagleServiceFactory(builder3.buildFactory())
 
-    new FinagleTransport(service, config.includeParrotHeader)
+    new FinagleTransport(service, config)
   }
 }
 
 
-class FinagleTransport(service: FinagleServiceAbstraction, includeParrotHeader: Boolean)
+class FinagleTransport(service: FinagleServiceAbstraction, config: ParrotServerConfig[ParrotRequest, HttpResponse])
   extends ParrotTransport[ParrotRequest, HttpResponse] {
 
   var allRequests = 0
@@ -93,10 +93,12 @@ class FinagleTransport(service: FinagleServiceAbstraction, includeParrotHeader: 
       case (name, value) => name + "=" + value
     } mkString (";"))
     httpRequest.setHeader("User-Agent", "com.twitter.parrot")
-    if (includeParrotHeader) {
+    if (config.includeParrotHeader) {
       httpRequest.setHeader("X-Parrot", "true")
     }
-    httpRequest.setHeader("X-Forwarded-For", randomIp)
+    if (config.includeRandomXForwardedForHeader) {
+      httpRequest.setHeader("X-Forwarded-For", randomIp)
+    }
 
     if (request.method == "POST" && request.body.length > 0) {
       val buffer = ChannelBuffers.copiedBuffer(BIG_ENDIAN, request.body, UTF_8)
