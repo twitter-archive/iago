@@ -80,7 +80,7 @@ class SMFProxy(config: ParrotLauncherConfig) {
         val lsOutput = runner.getOutput
         val lsNextLine = lsOutput.split("""\n+""")(1)
         lsNextLine.split("""\s+""")(4).toLong / 1024 / 1024
-      } catch { case e => 0L }
+      } catch { case e: Throwable => 0L }
     } else if (status == 1) 0L
     else {
       runner.dumpOutput()

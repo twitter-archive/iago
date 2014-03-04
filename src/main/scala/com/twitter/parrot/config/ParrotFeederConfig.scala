@@ -49,13 +49,13 @@ trait ParrotFeederConfig extends Config[RuntimeEnvironment => Service]
 
     inputLog = runtime.arguments.getOrElse("log", inputLog)
 
-    var admin = new AdminServiceFactory (
+    var admin = AdminServiceFactory(
       adminPort,
-      statsNodes = new StatsFactory(
-        reporters = new JsonStatsLoggerFactory(
+      statsNodes = StatsFactory(
+        reporters = JsonStatsLoggerFactory(
           period = 1.minute,
           serviceName = statsName
-        ) :: new TimeSeriesCollectorFactory()
+        ) :: TimeSeriesCollectorFactory()
       )
     )(runtime)
 

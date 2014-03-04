@@ -53,7 +53,7 @@ object ThriftTransportFactory extends ParrotTransportFactory[ParrotRequest, Arra
       .hostConnectionMaxLifeTime(Duration(config.hostConnectionMaxLifeTimeInMs,
         TimeUnit.MILLISECONDS))
       .reportTo(statsReceiver)
-      .tracer(ZipkinTracer.mk(statsReceiver = statsReceiver))
+      .tracer(ZipkinTracer.mk(statsReceiver))
 
     val builder2 = {
       if (config.transportScheme == config.TransportScheme.THRIFTS)

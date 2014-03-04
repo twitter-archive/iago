@@ -68,7 +68,7 @@ object ConsoleHandler {
     (() => handle(prefix, Some(level)))
 
   def loggers(level0: Level = Level.INFO, prefix: String = "") = {
-    List(new LoggerFactory(
+    List(LoggerFactory(
       level = Some(level0),
       handlers = List(apply(level0, prefix))))
   }

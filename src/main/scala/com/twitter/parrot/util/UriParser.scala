@@ -64,7 +64,7 @@ object UriParser {
         }
     }
     Return(Uri(uri.getPath, if (args.isEmpty) Nil else args))
-  } catch { case t =>
+  } catch { case t: Throwable =>
     Throw(t)
   }
 

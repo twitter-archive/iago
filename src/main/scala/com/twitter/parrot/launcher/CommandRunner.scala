@@ -43,7 +43,7 @@ object CommandRunner {
       runner.run()
       runner.getOutput.length > 0
     } catch {
-      case _ => false
+      case _: Throwable => false
     }
   }
 
@@ -61,7 +61,7 @@ object CommandRunner {
   }
 }
 
-class CommandRunner(command: String, verbose: Boolean = verbose) {
+class CommandRunner(command: String, verbose: Boolean = false) {
   private[this] val process = Runtime.getRuntime.exec(command)
   private[this] val inputStream = process.getInputStream
   private[this] val errorStream = process.getErrorStream
@@ -154,7 +154,7 @@ class PasswordReader(stream: OutputStream) extends Callable[Unit] {
           running = false
         }
       } catch {
-        case _ => println("exception in password reader, continuing...")
+        case _: Throwable => println("exception in password reader, continuing...")
       }
     }
   }

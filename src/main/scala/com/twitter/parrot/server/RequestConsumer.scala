@@ -89,7 +89,7 @@ class RequestConsumer[Req <: ParrotRequest, Rep](
         totalProcessed += 1
       }
     } catch {
-      case t =>
+      case t: Throwable =>
         log.error(t, "Exception sending request: %s", t)
     }
   }

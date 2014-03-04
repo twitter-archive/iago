@@ -27,7 +27,7 @@ import com.twitter.util.{Future, Promise, Time}
 class RefcountedService[Req, Rep](underlying: Service[Req, Rep])
   extends ServiceProxy[Req, Rep](underlying)
 {
-  protected[this] val replyLatch = new AsyncLatch
+  protected[this] val replyLatch = new AsyncLatch()
 
   override def apply(request: Req) = {
     replyLatch.incr()
