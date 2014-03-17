@@ -48,7 +48,7 @@ object FinagleTransportFactory extends ParrotTransportFactory[ParrotRequest, Htt
       .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
       .keepAlive(true)
       .reportTo(statsReceiver)
-      .tracer(ZipkinTracer.mk(statsReceiver = statsReceiver))
+      .tracer(ZipkinTracer.mk(statsReceiver))
 
     val builder2 = {
       if (config.transportScheme == config.TransportScheme.HTTPS)

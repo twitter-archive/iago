@@ -138,12 +138,12 @@ trait ParrotServerConfig[Req <: ParrotRequest, Rep] extends Config[RuntimeEnviro
     parrotPort = runtime.arguments.getOrElse("thriftPort", parrotPort.toString).toInt
     this.runtime = runtime
 
-    var admin = new AdminServiceFactory(
+    var admin = AdminServiceFactory(
       adminPort,
-      statsNodes = new StatsFactory(
-        reporters = new JsonStatsLoggerFactory(
+      statsNodes = StatsFactory(
+        reporters = JsonStatsLoggerFactory(
           period = 1.minute,
-          serviceName = statsName) :: new TimeSeriesCollectorFactory()))(runtime)
+          serviceName = statsName) :: TimeSeriesCollectorFactory()))(runtime)
 
     val server = new ParrotServerImpl(this)
 

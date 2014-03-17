@@ -34,18 +34,10 @@
     </pluginRepository>
   </pluginRepositories>
   <dependencies>
-
-    <!-- Scala -->
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
-      <version>2.9.2</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-      <version>2.9.2</version>
+      <version>2.10.3</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common.zookeeper</groupId>
@@ -74,52 +66,52 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-http_2.9.2</artifactId>
+      <artifactId>finagle-http_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-kestrel_2.9.2</artifactId>
+      <artifactId>finagle-kestrel_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-zipkin_2.9.2</artifactId>
+      <artifactId>finagle-zipkin_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-memcached_2.9.2</artifactId>
+      <artifactId>finagle-memcached_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-ostrich4_2.9.2</artifactId>
+      <artifactId>finagle-ostrich4_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-thrift_2.9.2</artifactId>
+      <artifactId>finagle-thrift_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>ostrich_2.9.2</artifactId>
+      <artifactId>ostrich_2.10</artifactId>
       <version>9.2.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-core_2.9.2</artifactId>
+      <artifactId>util-core_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-eval_2.9.2</artifactId>
+      <artifactId>util-eval_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-logging_2.9.2</artifactId>
+      <artifactId>util-logging_2.10</artifactId>
       <version>6.11.1</version>
     </dependency>
     <dependency>
@@ -135,7 +127,7 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>scrooge-core_2.9.2</artifactId>
+      <artifactId>scrooge-core_2.10</artifactId>
       <version>3.12.2</version>
     </dependency>
     <dependency>
@@ -146,8 +138,8 @@
     <!-- Test -->
     <dependency>
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_2.9.2</artifactId>
-      <version>1.9.1</version>
+      <artifactId>scalatest_2.10</artifactId>
+      <version>1.9.2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

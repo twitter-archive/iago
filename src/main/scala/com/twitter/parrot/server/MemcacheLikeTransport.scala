@@ -54,7 +54,7 @@ abstract class MemcacheLikeTransportFactory[Req, Rep] extends ParrotTransportFac
       .tcpConnectTimeout(Duration(config.tcpConnectTimeoutInMs, TimeUnit.MILLISECONDS))
       .keepAlive(true)
       .reportTo(statsReceiver)
-      .tracer(ZipkinTracer.mk(statsReceiver = statsReceiver))
+      .tracer(ZipkinTracer.mk(statsReceiver))
 
     val builder2 = {
       config.victim.value match {
@@ -88,7 +88,7 @@ class MemcacheLikeTransport[Req, Rep](
       result proxyTo response
       result
     } catch {
-      case e =>
+      case e: Throwable =>
         log.error(e, "error executing request %s", command)
         throw e
     }
