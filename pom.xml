@@ -355,17 +355,8 @@
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <version>2.2.1</version>
-        <dependencies>
-          <dependency>
-            <groupId>com.twitter</groupId>
-            <artifactId>package-dist</artifactId>
-            <version>0.0.6</version>
-          </dependency>
-        </dependencies>
         <configuration>
-          <descriptorRefs>
-            <descriptorRef>${twitter.package.type}</descriptorRef>
-          </descriptorRefs>
+	  <descriptor>src/assembly/package-dist.xml</descriptor>
           <archive>
             <manifest>
               <mainClass>${mainClass}</mainClass>
