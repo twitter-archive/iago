@@ -41,6 +41,7 @@ new #{configType}[#{requestType}, #{responseType}] {
   requestTimeoutInMs = #{requestTimeoutInMs}
   tcpConnectTimeoutInMs = #{tcpConnectTimeoutInMs}
   includeParrotHeader = #{includeParrotHeader}
+  includeRandomXForwardedForHeader = #{includeRandomXForwardedForHeader}
 
   // for thrift
   parrotPort = 9999

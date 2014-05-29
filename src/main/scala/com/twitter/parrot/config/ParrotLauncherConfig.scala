@@ -38,6 +38,8 @@ trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfi
   var hostConnectionLimit = Integer.MAX_VALUE
   var hostConnectionMaxIdleTimeInMs = 300000 // 5m
   var hostConnectionMaxLifeTimeInMs = Integer.MAX_VALUE
+  var includeParrotHeader = true
+  var includeRandomXForwardedForHeader = true
   var jobName = required[String]
   var localMode = false
   var log = required[String]
@@ -62,7 +64,6 @@ trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfi
   var timeUnit = "MINUTES"
   var traceLevel: Level = Level.INFO
   var verboseCmd = false
-  var includeParrotHeader = true
   var mesosFeederNumCpus = 5.0
   var mesosServerNumCpus = 4.0
 
