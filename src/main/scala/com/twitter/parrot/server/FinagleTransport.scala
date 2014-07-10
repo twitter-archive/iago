@@ -81,6 +81,7 @@ class FinagleTransport(service: FinagleServiceAbstraction, config: ParrotServerC
   override protected[server] def sendRequest(request: ParrotRequest): Future[HttpResponse] = {
     val requestMethod = request.method match {
       case "POST" => HttpMethod.POST
+      case "PUT"  => HttpMethod.PUT
       case _      => HttpMethod.GET
     }
     val httpRequest =
@@ -100,7 +101,7 @@ class FinagleTransport(service: FinagleServiceAbstraction, config: ParrotServerC
       httpRequest.setHeader("X-Forwarded-For", randomIp)
     }
 
-    if (request.method == "POST" && request.body.length > 0) {
+    if ((request.method == "POST" || request.method == "PUT") && request.body.length > 0) {
       val buffer = ChannelBuffers.copiedBuffer(BIG_ENDIAN, request.body, UTF_8)
       httpRequest.setHeader(CONTENT_LENGTH, buffer.readableBytes)
       httpRequest.setContent(buffer)
