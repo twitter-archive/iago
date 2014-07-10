@@ -253,7 +253,7 @@ import com.twitter.parrot.server.ParrotService;                                 
 import com.twitter.util.Future;
 import com.twitter.util.FutureEventListener;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.jboss.netty.handler.codec.http.HttpResponse
+import org.jboss.netty.handler.codec.http.HttpResponse;
 
 import java.util.List;
 
