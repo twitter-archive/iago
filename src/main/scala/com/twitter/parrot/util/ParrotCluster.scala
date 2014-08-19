@@ -318,8 +318,6 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
     config.get.zkHostName foreach { host => discovery.shutdown() }
 
     val allParrots = parrots
-    _runningParrots.clear()
-    _pausedParrots.clear()
     allParrots foreach { parrot =>
       try {
         parrot.shutdown()
@@ -328,6 +326,8 @@ class ParrotClusterImpl(config: Option[ParrotCommonConfig] = None)
         case t: Throwable => log.error(t, "Error shutting down Parrot: %s", t.getClass.getName)
       }
     }
+    _runningParrots.clear()
+    _pausedParrots.clear()
   }
 
   def pause() {
