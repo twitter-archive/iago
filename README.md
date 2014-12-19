@@ -42,7 +42,7 @@ If you are already familiar with the Iago Load Generation tool, follow these ste
 ### Iago Prerequisites
 
 1. Download and unpack the Iago distribution.
-We support Scala 2.9 and recommend you clone the latest master: <a href="https://github.com/twitter/iago/zipball/master">master</a>.
+We support Scala 2.10 and recommend you clone the latest master: <a href="https://github.com/twitter/iago/zipball/master">master</a>.
 
 2. Read the documentation.
 
