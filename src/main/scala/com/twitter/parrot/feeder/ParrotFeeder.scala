@@ -61,7 +61,6 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
 
     if (config.duration.inMillis > 0) {
       shutdownAfter(config.duration)
-      config.maxRequests = Integer.MAX_VALUE // don't terminate prematurely
     }
 
     // Poller is starting here so that we can validate that we get enough servers, ie
