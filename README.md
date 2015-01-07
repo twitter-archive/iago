@@ -504,7 +504,6 @@ You can specify any of the following parameters:
     <p><b>Example: </b><code>log = "logs/yesterday.log"</code></p>
     <p><p>If localMode=false (the default), then the parrot launcher will copy your log file when attempts to make a package for mesos. You can avoid this, and should, by storing your log file in HDFS.<p><b>Example: </b><code>log = "hdfs://hadoop-example.com/yesterday.log"</code></p></td>
     <td><b>Required</b></td>
-    <td><b>Required</b></td>
 </tr>
 
 <tr>
