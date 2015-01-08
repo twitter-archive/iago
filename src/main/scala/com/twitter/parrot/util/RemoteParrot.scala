@@ -117,7 +117,7 @@ class RemoteParrot(val name: String,
 
   def shutdown() {
     consumer.shutdown
-    waitFor(client.shutdown())
+    waitFor(client.shutdown(), Duration.Top)
     service.close()
   }
 
@@ -156,8 +156,8 @@ class RemoteParrot(val name: String,
     (service, client)
   }
 
-  private[this] def waitFor[A](future: Future[A]): A = {
-    future.get(finagleTimeout) match {
+  private[this] def waitFor[A](future: Future[A], timeout: Duration = finagleTimeout): A = {
+    future.get(timeout) match {
       case Return(res) => res
       case Throw(t)    => throw t
     }
