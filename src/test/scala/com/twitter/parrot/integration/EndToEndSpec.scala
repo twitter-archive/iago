@@ -123,9 +123,11 @@ class EndToEndSpec extends WordSpec with MustMatchers with FeederFixture {
         feederConfig.batchSize = 3
 
         val feederDone = Promise[Unit]
+        var feederState = FeederState.RUNNING
         val feeder = new ParrotFeeder(feederConfig) {
           override def shutdown() = {
-            feederDone.setDone() // give this test ability to wait on shutdown call to test for timeout
+            feederDone.setDone() // give this test ability to wait on shutdown call
+            feederState = state // capture state at beginning of shutdown call
             super.shutdown()
           }
         }
@@ -136,8 +138,7 @@ class EndToEndSpec extends WordSpec with MustMatchers with FeederFixture {
           case e: TimeoutException =>
             fail(String.format("Server did not time out in %s", PrettyDuration(secondsToRun.seconds)))
         }
-        val (requestsRead, allRequests, rp) = report(feeder, transport, serverConfig)
-        allRequests must be <= expectedRequests + 1 // allow for small margin due to race condition
+        feederState must be === FeederState.TIMEOUT
       }
 
       "honor the max request limit" in {

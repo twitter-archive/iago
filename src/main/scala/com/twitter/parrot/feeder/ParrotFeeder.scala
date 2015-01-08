@@ -43,7 +43,7 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   private[this] val log = Logger.get(getClass.getName)
   val requestsRead = new AtomicLong(0)
   @volatile
-  private[this] var state = FeederState.RUNNING
+  protected[this] var state = FeederState.RUNNING
 
   private[this] val initializedParrots = mutable.Set[RemoteParrot]()
 
