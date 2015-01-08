@@ -27,19 +27,11 @@ import com.twitter.logging.Level
 import com.twitter.logging.Logger
 import com.twitter.parrot.config.ParrotFeederConfig
 import com.twitter.parrot.config.ParrotServerConfig
-import com.twitter.parrot.feeder.InMemoryLog
-import com.twitter.parrot.feeder.ParrotFeeder
+import com.twitter.parrot.feeder.{FeederState, InMemoryLog, ParrotFeeder}
 import com.twitter.parrot.server._
 import com.twitter.parrot.util.ConsoleHandler
 import com.twitter.parrot.util.PrettyDuration
-import com.twitter.util.Await
-import com.twitter.util.Duration
-import com.twitter.util.Eval
-import com.twitter.util.Future
-import com.twitter.util.RandomSocket
-import com.twitter.util.Stopwatch
-import com.twitter.util.Time
-import com.twitter.util.TimeoutException
+import com.twitter.util._
 
 @RunWith(classOf[JUnitRunner])
 class EndToEndSpec extends WordSpec with MustMatchers with FeederFixture {
@@ -111,7 +103,7 @@ class EndToEndSpec extends WordSpec with MustMatchers with FeederFixture {
         assert(rp.properlyShutDown)
       }
 
-      "honor timouts" in {
+      "honor timeouts" in {
         val serverConfig = makeServerConfig(true)
         serverConfig.cachedSeconds = 1
         val transport = serverConfig.transport.get.asInstanceOf[FinagleTransport]
@@ -120,20 +112,58 @@ class EndToEndSpec extends WordSpec with MustMatchers with FeederFixture {
         server.start()
 
         val rate = 1 // rps ... requests per second
-        val seconds = 20 // how long we expect to take to send our requests
-        val totalRequests = (rate * seconds).toInt
-        val feederConfig = makeFeederConfig(serverConfig.parrotPort, twitters(totalRequests))
+        val secondsToRun = 10
+        val expectedRequests = (rate * secondsToRun) // expect the number of requests we can send before timeout
+        val feederConfig = makeFeederConfig(serverConfig.parrotPort, twitters(expectedRequests))
 
         feederConfig.reuseFile = true
         feederConfig.requestRate = rate
-        feederConfig.duration = (seconds / 2).toInt.seconds
+        feederConfig.duration = secondsToRun.seconds
+        feederConfig.maxRequests = Integer.MAX_VALUE // allow for unlimited requests so that timeout can occur
+        feederConfig.batchSize = 3
+
+        val feederDone = Promise[Unit]
+        val feeder = new ParrotFeeder(feederConfig) {
+          override def shutdown() = {
+            feederDone.setDone() // give this test ability to wait on shutdown call to test for timeout
+            super.shutdown()
+          }
+        }
+        feeder.start()
+        try {
+          Await.ready(feederDone, (secondsToRun + 1).seconds) // time out if feeder timeout is not honored
+        } catch {
+          case e: TimeoutException =>
+            fail(String.format("Server did not time out in %s", PrettyDuration(secondsToRun.seconds)))
+        }
+        val (requestsRead, allRequests, rp) = report(feeder, transport, serverConfig)
+        allRequests must be <= expectedRequests + 1 // allow for small margin due to race condition
+      }
+
+      "honor the max request limit" in {
+        val serverConfig = makeServerConfig(true)
+        serverConfig.cachedSeconds = 1
+        val transport = serverConfig.transport.get.asInstanceOf[FinagleTransport]
+        val server: ParrotServerImpl[ParrotRequest, HttpResponse] =
+          new ParrotServerImpl(serverConfig)
+        server.start()
+
+        val rate = 1 // rps ... requests per second
+        val requestLimit = 10 // how many requests we want to send
+        val secondsToRun = (rate * requestLimit * 2) // run much longer than needed to send the max number of requests
+        val feederConfig = makeFeederConfig(serverConfig.parrotPort, twitters(requestLimit))
+
+        feederConfig.reuseFile = true
+        feederConfig.requestRate = rate
+        feederConfig.duration = secondsToRun.seconds
+        feederConfig.maxRequests = requestLimit
         feederConfig.batchSize = 3
 
         val feeder = new ParrotFeeder(feederConfig)
         feeder.start() // shuts down when maxRequests have been sent
-        waitForServer(server.done, seconds * 2)
+        waitForServer(server.done, secondsToRun)
         val (requestsRead, allRequests, rp) = report(feeder, transport, serverConfig)
-        allRequests must be < requestsRead.toInt
+        allRequests must be === requestLimit
         assert(rp.properlyShutDown)
       }
     }
