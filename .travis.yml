@@ -1,4 +1,4 @@
 language: java
+sudo: false
 jdk:
   - openjdk7
-  - openjdk6
