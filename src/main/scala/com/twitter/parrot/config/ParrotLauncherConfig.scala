@@ -44,7 +44,7 @@ trait ParrotLauncherConfig extends Config[ParrotLauncher] with ParrotCommonConfi
   var localMode = false
   var log = required[String]
   var maxPerHost = 1
-  var maxRequests = 1000
+  var maxRequests = Integer.MAX_VALUE
   var mesosEnv = "devel"
   var mesosFeederRamInMb: Option[Int] = None
   var mesosServerRamInMb: Option[Int] = None

@@ -43,7 +43,7 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
   private[this] val log = Logger.get(getClass.getName)
   val requestsRead = new AtomicLong(0)
   @volatile
-  private[this] var state = FeederState.RUNNING
+  protected[this] var state = FeederState.RUNNING
 
   private[this] val initializedParrots = mutable.Set[RemoteParrot]()
 
@@ -61,7 +61,6 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
 
     if (config.duration.inMillis > 0) {
       shutdownAfter(config.duration)
-      config.maxRequests = Integer.MAX_VALUE // don't terminate prematurely
     }
 
     // Poller is starting here so that we can validate that we get enough servers, ie

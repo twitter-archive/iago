@@ -527,7 +527,7 @@ new ParrotLauncherConfig {
     <td><code>maxRequests</code></td>
     <td><p>An integer value that specifies the total number of requests to submit to your service.</p>
     <p><b>Example: </b><code>maxRequests = 10000</code></p></td>
-    <td><code>1000</code></td>
+    <td><code>Integer.MAX_VALUE</code></td>
 </tr>
 
 <tr>
