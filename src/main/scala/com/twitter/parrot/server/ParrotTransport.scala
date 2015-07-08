@@ -19,8 +19,7 @@ import scala.collection.mutable
 import scala.util.Random
 import com.twitter.finagle.Service
 import com.twitter.logging.Logger
-import com.twitter.parrot.util.IgnorantHostnameVerifier
-import com.twitter.parrot.util.IgnorantTrustManager
+import com.twitter.parrot.util.{IgnorantHostnameVerifier, IgnorantTrustManager}
 import com.twitter.util.Future
 import com.twitter.util.Time
 import com.twitter.util.Try
@@ -31,12 +30,18 @@ import com.twitter.util.Await
 
 trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
   val log = Logger.get(getClass.getName)
-  private[this] val handlers = new mutable.ListBuffer[Try[Rep] => Unit]()
-  override def apply(request: Req): Future[Rep] =
+  private[this] val responseHandlers = new mutable.ListBuffer[Try[Rep] => Unit]()
+  private[this] val requestHandlers = new mutable.ListBuffer[Req => Unit]()
+  private[this] val responseReqHandlers = new mutable.ListBuffer[(Try[Rep], Req) => Unit]()
+  override def apply(request: Req): Future[Rep] = {
+    requestHandlers foreach { _(request) }
+
     sendRequest(request) respond { k =>
       log.debug("Response: " + k.toString)
-      handlers foreach { _(k) }
+      responseHandlers foreach { _(k) }
+      responseReqHandlers foreach { _(k, request) }
     }
+  }
 
   protected[server] def sendRequest(request: Req): Future[Rep]
 
@@ -47,7 +52,15 @@ trait ParrotTransport[Req <: ParrotRequest, Rep] extends Service[Req, Rep] {
   def stats(response: Rep): Seq[String] = Nil
 
   def respond(f: Try[Rep] => Unit) {
-    handlers += f
+    responseHandlers += f
+  }
+
+  def request(f: Req => Unit) {
+    requestHandlers += f
+  }
+
+  def respondReq(f: (Try[Rep], Req) => Unit) {
+    responseReqHandlers += f
   }
 
   def start() {
