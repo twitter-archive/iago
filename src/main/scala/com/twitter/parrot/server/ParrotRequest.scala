@@ -30,6 +30,7 @@ class ParrotRequest(
   val cookies: Seq[(String, String)] = Seq(),
   val method: String = "GET",
   val body: String = "",
+  val bodyInputStream: Option[java.io.ByteArrayInputStream] = None,
   val weight: Int = 1
   ) {
   val headers: Seq[(String, String)] =
