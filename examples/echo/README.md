@@ -7,7 +7,7 @@ If you are unfamiliar with how to use Iago, check out src & config/echo.scala. A
 
 ## Build Iago
 
-mvn -DskipTest install
+mvn -DskipTests install
 
 ## Build the example
 
