@@ -87,8 +87,8 @@ class ParrotFeeder(config: ParrotFeederConfig) extends Service {
     log.trace("ParrotFeeder: shutting down ...")
     if (state == FeederState.RUNNING)
       state = FeederState.TIMEOUT // shuts down immediately when timeout
-    cluster.shutdown()
     poller.shutdown()
+    cluster.shutdown()
     ServiceTracker.shutdown()
     log.trace("ParrotFeeder: shut down")
   }
