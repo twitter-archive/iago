@@ -23,14 +23,14 @@
     <repository>
       <id>twitter</id>
       <name>Twitter Public Repo</name>
-      <url>http://maven.twttr.com</url>
+      <url>https://maven.twttr.com</url>
     </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
       <id>repo1</id>
       <name>Maven Central</name>
-      <url>http://repo1.maven.org/maven2</url>
+      <url>https://repo1.maven.org/maven2</url>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>

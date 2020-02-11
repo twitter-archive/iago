@@ -17,13 +17,13 @@
   <repositories>
     <repository>
       <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
+      <url>https://maven.twttr.com</url>
     </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
       <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
+      <url>https://maven.twttr.com</url>
     </pluginRepository>
   </pluginRepositories>
   <dependencies>
